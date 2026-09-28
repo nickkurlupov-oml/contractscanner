@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effectiff Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<style>
+  :root{
+    --paper:#FFFFFF;
+    --paper-dim:#F5F5F5;
+    --ink:#1A1A1A;
+    --ink-soft:#3D3D3D;
+    --green:#D6291C;
+    --green-dark:#A81F15;
+    --brass:#4A4A4A;
+    --slate:#6E6E6E;
+    --rust:#8C1D18;
+    --line:#DBDBDB;
+    --mono:'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+    --sans:'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;}
+  #cc-root{
+    font-family:var(--sans);
+    background:var(--paper);
+    color:var(--ink);
+    min-height:100%;
+    padding-bottom:40px;
+  }
+  .cc-wrap{max-width:520px;margin:0 auto;padding:0 16px;}
+
+  /* Header */
+  .cc-header{
+    padding:22px 16px 16px;
+    border-bottom:1px solid var(--line);
+    background:var(--paper);
+    position:sticky;top:0;z-index:20;
+  }
+  .cc-header-row{max-width:520px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;}
+  .cc-title{
+    font-family:var(--sans);
+    font-weight:700;
+    font-size:19px;
+    letter-spacing:-0.01em;
+    margin:0;
+    color:var(--ink);
+  }
+  .cc-title .cc-e{color:var(--green);font-weight:800;}
+  .cc-title .cc-sub-word{font-weight:400;color:var(--ink-soft);}
+  .cc-title small{display:block;font-family:var(--sans);font-weight:400;font-size:12.5px;color:var(--slate);margin-top:4px;letter-spacing:0;}
+  .cc-gear{
+    background:none;border:1px solid var(--line);border-radius:7px;
+    width:34px;height:34px;cursor:pointer;color:var(--ink-soft);
+    flex-shrink:0;display:flex;align-items:center;justify-content:center;
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .cc-gear:hover{border-color:var(--green);color:var(--green);}
+
+  /* Settings panel */
+  .cc-settings{
+    max-width:520px;margin:0 auto;
+    background:var(--paper-dim);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:14px 16px;
+    margin-top:14px;
+    display:none;
+  }
+  .cc-settings.open{display:block;}
+  .cc-settings h3{font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:0.08em;color:var(--slate);margin:0 0 10px;}
+  .cc-field{margin-bottom:10px;}
+  .cc-field label{display:block;font-size:12px;color:var(--ink-soft);margin-bottom:4px;font-weight:500;}
+  .cc-field input{
+    width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;
+    font-family:var(--mono);font-size:13px;background:#fff;color:var(--ink);
+  }
+  .cc-field input:focus{outline:none;border-color:var(--green);}
+  .cc-hint{font-size:11.5px;color:var(--slate);line-height:1.5;margin-top:8px;}
+  .cc-toggle-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-soft);font-weight:500;cursor:pointer;}
+  .cc-toggle-row input{accent-color:var(--green);width:16px;height:16px;}
+  .cc-room-grid{display:flex;flex-direction:column;gap:6px;}
+  .cc-room-row{display:flex;align-items:center;gap:8px;}
+  .cc-room-name{
+    font-size:12px;font-weight:500;color:var(--ink-soft);
+    width:90px;flex-shrink:0;
+  }
+  .cc-room-row input{
+    flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:6px;
+    font-family:var(--mono);font-size:13px;background:#fff;color:var(--ink);
+  }
+  .cc-room-row input:focus{outline:none;border-color:var(--green);}
+  .cc-dest-row{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .cc-dest-label{font-size:12px;color:var(--ink-soft);font-weight:500;flex-shrink:0;}
+  .cc-dest-select{
+    flex:1;padding:8px 10px;border:1px solid var(--line);border-radius:6px;
+    font-family:var(--sans);font-size:13px;background:#fff;color:var(--ink);
+  }
+  .cc-dest-select:focus{outline:none;border-color:var(--green);}
+  .cc-link-btn{
+    background:none;border:none;padding:0;color:var(--green);font-size:11.5px;
+    font-family:var(--sans);text-decoration:underline;cursor:pointer;
+  }
+
+  /* Capture buttons */
+  .cc-capture-row{display:flex;gap:10px;margin-top:18px;}
+  .cc-btn{
+    flex:1;padding:11px 10px;border-radius:6px;border:1px solid var(--line);
+    background:#fff;font-family:var(--sans);font-weight:600;font-size:13.5px;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
+    color:var(--ink);transition:background-color .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .cc-btn:active{opacity:0.85;}
+  .cc-btn.primary{background:var(--green);border-color:var(--green);color:#fff;}
+  .cc-btn.primary:hover{background:var(--green-dark);}
+  .cc-btn:not(.primary):hover{border-color:var(--green);color:var(--green);}
+  .cc-btn:disabled{opacity:0.45;cursor:not-allowed;}
+
+  /* Section labels */
+  .cc-section-label{
+    font-family:var(--sans);font-weight:600;font-size:14.5px;
+    color:var(--ink);margin:28px 0 12px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .cc-count-pill{
+    font-family:var(--sans);font-weight:400;color:var(--slate);font-size:13px;
+  }
+
+  /* Empty state */
+  .cc-empty{
+    border:1.5px dashed var(--line);border-radius:8px;padding:26px 16px;
+    text-align:center;color:var(--slate);font-size:13.5px;line-height:1.6;
+  }
+
+  /* Check card */
+  .cc-card{
+    display:flex;gap:12px;background:#fff;border:1px solid var(--line);
+    border-radius:8px;padding:12px;margin-bottom:10px;
+    animation:cc-fade-in .15s ease;
+  }
+  @keyframes cc-fade-in{from{opacity:0;}to{opacity:1;}}
+  .cc-thumb-pair{display:flex;gap:6px;flex-shrink:0;}
+  .cc-thumb-slot{display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .cc-thumb-label{font-size:9.5px;color:var(--slate);text-transform:uppercase;letter-spacing:0.05em;}
+  .cc-thumb{
+    width:64px;height:64px;border-radius:5px;object-fit:cover;flex-shrink:0;
+    border:1px solid var(--line);background:var(--paper-dim);
+  }
+  .cc-card-body{flex:1;min-width:0;}
+  .cc-card-top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:6px 8px;}
+  .cc-status{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:0.05em;}
+  .cc-status.reading{color:var(--brass);}
+  .cc-status.done{color:var(--green);}
+  .cc-status.error{color:var(--rust);}
+  .cc-remove{background:none;border:none;color:var(--slate);cursor:pointer;padding:2px 4px;display:flex;align-items:center;}
+  .cc-remove:hover{color:var(--rust);}
+  .cc-mini-field{margin-top:7px;}
+  .cc-mini-field label{display:block;font-size:10.5px;color:var(--slate);margin-bottom:2px;}
+  .cc-mini-field input{
+    width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:5px;
+    font-family:var(--sans);font-size:13px;background:var(--paper);
+  }
+  .cc-mini-field input:focus{outline:none;border-color:var(--green);background:#fff;}
+  .cc-row-2{display:flex;gap:8px;}
+  .cc-row-2 .cc-mini-field{flex:1;}
+
+  /* Section divider */
+  .cc-divider{
+    border-top:1px solid var(--line);
+    margin:32px 0 0;
+    padding-top:20px;
+  }
+  .cc-divider .cc-section-label{margin-top:0;}
+
+  /* Company group */
+  .cc-group{
+    background:#fff;border:1px solid var(--line);border-radius:8px;
+    padding:16px;margin-bottom:14px;
+  }
+  .cc-group-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:12px;}
+  .cc-group-name{font-family:var(--sans);font-weight:600;font-size:15px;color:var(--ink);}
+  .cc-group-meta{font-size:12px;color:var(--slate);font-family:var(--sans);white-space:nowrap;}
+  .cc-group-total{font-family:var(--mono);font-size:13.5px;color:var(--ink-soft);margin-bottom:12px;}
+  .cc-thumbstrip{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;padding-bottom:2px;}
+  .cc-thumbstrip img{width:42px;height:42px;object-fit:cover;border-radius:4px;border:1px solid var(--line);flex-shrink:0;}
+  .cc-group-actions{display:flex;gap:8px;}
+  .cc-group-msg{margin-top:9px;font-size:12px;line-height:1.5;display:flex;align-items:center;gap:5px;}
+  .cc-group-msg.ok{color:var(--green);}
+  .cc-group-msg.err{color:var(--rust);}
+  .cc-group-empty{font-size:12.5px;color:var(--slate);padding:6px 0 2px;}
+  .cc-item-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--paper-dim);}
+  .cc-item-row:last-of-type{border-bottom:none;}
+  .cc-item-thumb{width:40px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--line);flex-shrink:0;}
+  .cc-item-amount{font-family:var(--mono);font-size:12.5px;color:var(--ink-soft);flex:1;}
+  .cc-item-warn{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:0.04em;color:var(--rust);white-space:nowrap;}
+  .cc-item-warn.dupe{color:var(--brass);}
+  .cc-group-addrow{display:flex;gap:8px;margin:10px 0 12px;}
+  .cc-group-addrow .cc-btn{font-size:12.5px;padding:9px 8px;}
+  .cc-sendall-wrap{margin-top:20px;padding-top:16px;border-top:1px solid var(--line);}
+  .cc-sendall{font-size:14.5px;padding:13px 10px;width:100%;}
+  .cc-sendall:disabled{opacity:0.4;}
+
+  .cc-spinner{
+    display:inline-block;width:12px;height:12px;border-radius:50%;
+    border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;
+    animation:cc-spin .7s linear infinite;
+  }
+  .cc-btn:not(.primary) .cc-spinner{border:2px solid rgba(47,111,94,0.25);border-top-color:var(--green);}
+  @keyframes cc-spin{to{transform:rotate(360deg);}}
+
+  .cc-note{font-size:11.5px;color:var(--slate);line-height:1.6;margin-top:22px;padding-top:14px;border-top:1px solid var(--line);}
+</style>
+</head>
+<body>
+
+<div id="cc-root">
+  <div class="cc-header">
+    <div class="cc-header-row">
+      <h1 class="cc-title"><span class="cc-e">e</span><span class="cc-sub-word">ffectiff</span> Scanner<small>Photograph checks, group them by company, and send to Rocket.Chat</small></h1>
+      <button class="cc-gear" id="cc-gear-btn" title="Rocket.Chat settings"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.97 7.97 0 0 0 0-2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.9 3h-4l-.4 2.9a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L6.4 11a7.97 7.97 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3h4l.4-2.9a8 8 0 0 0 1.7-1l2.4 1 2-3.4z"/></svg></button>
+    </div>
+    <div class="cc-settings" id="cc-settings">
+      <h3>Rocket.Chat connection</h3>
+      <div class="cc-field">
+        <label for="cc-server">Server URL</label>
+        <input id="cc-server" type="text" placeholder="https://chat.yourcompany.com" autocomplete="off">
+      </div>
+      <div class="cc-row-2">
+        <div class="cc-field">
+          <label for="cc-userid">User Id</label>
+          <input id="cc-userid" type="text" placeholder="xxxxxxxxxxxxxxxx" autocomplete="off">
+        </div>
+        <div class="cc-field">
+          <label for="cc-token">Auth Token</label>
+          <input id="cc-token" type="password" placeholder="personal access token" autocomplete="off">
+        </div>
+      </div>
+      <div class="cc-field">
+        <label>Destination Rooms</label>
+        <div class="cc-hint" style="margin-top:0;margin-bottom:8px;">Room ID for each destination channel. Open the room in Rocket.Chat, select Room Info, and copy the ID.</div>
+        <div class="cc-room-grid">
+          <div class="cc-room-row"><span class="cc-room-name">IIS</span><input id="cc-room-iis" type="text" placeholder="room id" autocomplete="off"></div>
+          <div class="cc-room-row"><span class="cc-room-name">Effectiff</span><input id="cc-room-effectiff" type="text" placeholder="room id" autocomplete="off"></div>
+          <div class="cc-room-row"><span class="cc-room-name">TNOLA</span><input id="cc-room-tnola" type="text" placeholder="room id" autocomplete="off"></div>
+          <div class="cc-room-row"><span class="cc-room-name">AFLS</span><input id="cc-room-afls" type="text" placeholder="room id" autocomplete="off"></div>
+          <div class="cc-room-row"><span class="cc-room-name">Effectiff LSI</span><input id="cc-room-lsi" type="text" placeholder="room id" autocomplete="off"></div>
+        </div>
+      </div>
+      <div class="cc-field">
+        <label class="cc-toggle-row"><input type="checkbox" id="cc-email-toggle"> Email a PDF copy of each sent batch to records</label>
+        <div class="cc-hint" style="margin-top:4px;">Requires the email service to be configured on the server (SMTP settings in Netlify). Leave off until that's done &mdash; sends to Rocket.Chat work either way.</div>
+      </div>
+      <div class="cc-hint">
+        User Id and Auth Token come from a Rocket.Chat Personal Access Token (My Account, then Personal Access Tokens).
+      </div>
+      <div class="cc-field" style="margin-top:12px;">
+        <button class="cc-btn" id="cc-test-btn" type="button" style="flex:none;width:100%;">Test Connection</button>
+        <div id="cc-test-results" class="cc-hint" style="white-space:pre-line;"></div>
+      </div>
+      <div class="cc-hint" id="cc-saved-hint">Saved on this device so you don't have to re-enter it daily. <button class="cc-link-btn" id="cc-forget-btn" type="button">Clear saved details</button></div>
+    </div>
+  </div>
+
+  <div class="cc-wrap">
+    <div class="cc-capture-row">
+      <button class="cc-btn primary" id="cc-take-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="14" r="3.5"/></svg> Take Photo</button>
+      <button class="cc-btn" id="cc-library-btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-4 4-3-3-5 5"/></svg> Choose Photos</button>
+    </div>
+    <input type="file" id="cc-camera-input" accept="image/*" capture="environment" style="display:none">
+    <input type="file" id="cc-library-input" accept="image/*" style="display:none">
+
+    <div class="cc-section-label">Captured Checks <span class="cc-count-pill" id="cc-inbox-count">0</span></div>
+    <div id="cc-inbox"></div>
+
+    <div class="cc-divider">
+      <div class="cc-section-label">Grouped by Company</div>
+    </div>
+    <div id="cc-groups"></div>
+
+    <div class="cc-note">
+      Add checks straight into a company section with its Add Check button, or use Take Photo at the top and assign the company afterward. One photo of the front per check. OCR runs entirely in this browser (for the amount, and the company when unassigned). Files only go to the Rocket.Chat server you configure above.
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const ICON_CAMERA = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="14" r="3.5"/></svg>';
+  const ICON_IMAGE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 16l-5-5-4 4-3-3-5 5"/></svg>';
+  const ICON_GEAR = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.97 7.97 0 0 0 0-2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.9 3h-4l-.4 2.9a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L6.4 11a7.97 7.97 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3h4l.4-2.9a8 8 0 0 0 1.7-1l2.4 1 2-3.4z"/></svg>';
+  const ICON_CLOSE = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"/></svg>';
+  const ICON_DOWNLOAD = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><path d="M7 11l5 5 5-5"/><path d="M5 20h14"/></svg>';
+  const ICON_CHECK = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12l5 5L20 6"/></svg>';
+
+  const DESTINATIONS = [
+    { key: 'iis', name: 'IIS', inputId: 'cc-room-iis' },
+    { key: 'effectiff', name: 'Effectiff', inputId: 'cc-room-effectiff' },
+    { key: 'tnola', name: 'TNOLA', inputId: 'cc-room-tnola' },
+    { key: 'afls', name: 'AFLS', inputId: 'cc-room-afls' },
+    { key: 'lsi', name: 'Effectiff LSI', inputId: 'cc-room-lsi' }
+  ];
+
+  let checks = []; // {id, frontDataUrl, ocrStatus, ocrText, company, amount}
+  let nextId = 1;
+  let knownCompanies = [];
+  let pendingGroup = null;  // company display name — set when capture was started from a group's "Add Check" button
+  let groupDestinations = {}; // companyKey -> destination key chosen in the picker
+
+  const $ = (id) => document.getElementById(id);
+  const gearBtn = $('cc-gear-btn');
+  const settingsPanel = $('cc-settings');
+  const takeBtn = $('cc-take-btn');
+  const libraryBtn = $('cc-library-btn');
+  const cameraInput = $('cc-camera-input');
+  const libraryInput = $('cc-library-input');
+  const inboxEl = $('cc-inbox');
+  const inboxCountEl = $('cc-inbox-count');
+  const groupsEl = $('cc-groups');
+  const forgetBtn = $('cc-forget-btn');
+  const SETTINGS_KEY = 'effectiff-scanner-rc-settings';
+  const SETTINGS_FIELD_IDS = ['cc-server','cc-userid','cc-token', ...DESTINATIONS.map(d => d.inputId)];
+
+  function loadSettings(){
+    try{
+      const raw = localStorage.getItem(SETTINGS_KEY);
+      if(!raw) return;
+      const s = JSON.parse(raw);
+      $('cc-server').value = s.server || '';
+      $('cc-userid').value = s.userId || '';
+      $('cc-token').value = s.token || '';
+      $('cc-email-toggle').checked = !!s.emailCopies;
+      const rooms = s.rooms || {};
+      DESTINATIONS.forEach(d => { $(d.inputId).value = rooms[d.key] || ''; });
+    }catch(err){ console.error(err); }
+  }
+
+  function saveSettings(){
+    try{
+      const rooms = {};
+      DESTINATIONS.forEach(d => { rooms[d.key] = $(d.inputId).value.trim(); });
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+        server: $('cc-server').value.trim(),
+        userId: $('cc-userid').value.trim(),
+        token: $('cc-token').value.trim(),
+        emailCopies: $('cc-email-toggle').checked,
+        rooms
+      }));
+    }catch(err){ console.error(err); }
+  }
+
+  SETTINGS_FIELD_IDS.forEach(id => {
+    $(id).addEventListener('input', saveSettings);
+  });
+  $('cc-email-toggle').addEventListener('change', saveSettings);
+
+  forgetBtn.addEventListener('click', () => {
+    localStorage.removeItem(SETTINGS_KEY);
+    SETTINGS_FIELD_IDS.forEach(id => $(id).value = '');
+    $('cc-email-toggle').checked = false;
+  });
+
+  $('cc-test-btn').addEventListener('click', async () => {
+    const btn = $('cc-test-btn');
+    const out = $('cc-test-results');
+    btn.disabled = true;
+    btn.textContent = 'Testing…';
+    out.textContent = '';
+    try{
+      const rooms = {};
+      DESTINATIONS.forEach(d => { rooms[d.name] = $(d.inputId).value.trim(); });
+      const res = await fetch('/.netlify/functions/rc-test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          server: $('cc-server').value.trim().replace(/\/$/, ''),
+          userId: $('cc-userid').value.trim(),
+          authToken: $('cc-token').value.trim(),
+          rooms
+        })
+      });
+      const r = await res.json();
+      const lines = [];
+      lines.push(`Server: ${r.server || '—'}`);
+      if(r.auth) lines.push(`Login: ${r.auth}`);
+      Object.entries(r.rooms || {}).forEach(([name, status]) => lines.push(`${name}: ${status}`));
+      out.textContent = lines.join('\n');
+    }catch(err){
+      out.textContent = 'Test failed to run — this only works from the deployed site (your Netlify URL), not a locally opened file.';
+    }finally{
+      btn.disabled = false;
+      btn.textContent = 'Test Connection';
+    }
+  });
+
+  // Best-guess default destination from the group's company name, e.g. a
+  // check tagged "AFLS Inc" defaults to the AFLS room. "Effectiff LSI" is
+  // checked before "Effectiff" so the longer name wins.
+  function guessDestination(displayName){
+    const lower = displayName.toLowerCase();
+    const ordered = [...DESTINATIONS].sort((a, b) => b.name.length - a.name.length);
+    const hit = ordered.find(d => lower.includes(d.name.toLowerCase()));
+    return hit ? hit.key : '';
+  }
+
+  gearBtn.addEventListener('click', () => settingsPanel.classList.toggle('open'));
+  takeBtn.addEventListener('click', () => { pendingGroup = null; cameraInput.click(); });
+  libraryBtn.addEventListener('click', () => { pendingGroup = null; libraryInput.click(); });
+  cameraInput.addEventListener('change', (e) => handleCapture(e.target.files[0]));
+  libraryInput.addEventListener('change', (e) => handleCapture(e.target.files[0]));
+
+  function readAsDataUrl(file){
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // Downscale to a sane size before storing, and capture the image's
+  // dimensions right here — once, at capture time. This is deliberately
+  // the ONLY place a photo gets loaded into an <img> element. Nothing
+  // downstream (PDF building) re-loads it, which removes the fragile
+  // "re-decode a data URL" step that was causing silent hangs on some
+  // photos. If decoding fails for any reason, we still resolve (never
+  // hang) using a typical check aspect ratio as a fallback.
+  function compressImage(dataUrl, maxWidth = 1100, quality = 0.65){
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (result) => { if(!settled){ settled = true; resolve(result); } };
+      // If this hard-fails or times out, resolve with dataUrl: null rather
+      // than the original file data — the original might not actually be
+      // JPEG-encoded, and doc.addImage() always declares 'JPEG' downstream.
+      // null triggers the visible "image failed to load" warning in the
+      // PDF; silently passing through mismatched image data is what
+      // produced blank pages with no error anywhere.
+      const timer = setTimeout(() => finish({ dataUrl: null, width: 1000, height: 450 }), 8000);
+      const img = new Image();
+      img.onload = () => {
+        clearTimeout(timer);
+        const w = img.naturalWidth, h = img.naturalHeight;
+        if(!w || !h){ finish({ dataUrl: null, width: 1000, height: 450 }); return; }
+        // Always redraw through canvas and re-encode as JPEG — even when
+        // no resize is needed — so what's stored is *guaranteed* to
+        // actually be JPEG data. Previously, images already under
+        // maxWidth skipped this and kept their original encoding (which
+        // could be PNG or anything else), while still getting labeled
+        // 'JPEG' when added to the PDF. That mismatch is what caused
+        // blank pages with no thrown error.
+        const targetW = Math.min(w, maxWidth);
+        const scale = targetW / w;
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = Math.round(h * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        finish({ dataUrl: canvas.toDataURL('image/jpeg', quality), width: canvas.width, height: canvas.height });
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        finish({ dataUrl: null, width: 1000, height: 450 });
+      };
+      img.src = dataUrl;
+    });
+  }
+
+  async function handleCapture(file){
+    cameraInput.value = '';
+    libraryInput.value = '';
+    if(!file) return;
+
+    // A real phone/camera photo, even a small one, produces at minimum
+    // tens of KB of data. Anything drastically smaller almost always means
+    // the file wasn't actually available yet — most commonly an iCloud
+    // Photos placeholder that Finder shows normally but hasn't fully
+    // downloaded. Catch that here instead of silently building a broken
+    // check the OCR/PDF steps can't do anything useful with.
+    if(file.size < 5000){
+      alert(
+        `That file looks too small to be a real photo (${file.size} bytes).\n\n` +
+        `This usually means it hasn't fully downloaded from iCloud yet. Try:\n` +
+        `• Opening the photo in Preview first and waiting a moment, then try uploading again\n` +
+        `• Or: System Settings → Apple ID → iCloud → Photos → turn off "Optimize Mac Storage" so originals stay on disk`
+      );
+      return;
+    }
+
+    const rawDataUrl = await readAsDataUrl(file);
+    const { dataUrl, width, height } = await compressImage(rawDataUrl);
+
+    // Starting a brand new check: this photo is the check.
+    const assignedCompany = pendingGroup; // may be null
+    pendingGroup = null;
+    const check = {
+      id: nextId++,
+      frontDataUrl: dataUrl,
+      frontWidth: width,
+      frontHeight: height,
+      ocrStatus: 'reading',
+      ocrText: '',
+      company: assignedCompany || '',
+      amount: '',
+      companyLocked: !!assignedCompany // person chose the section — OCR won't overwrite it
+    };
+    checks.push(check);
+    render();
+    runOCR(check);
+  }
+
+  function requestGroupFront(companyName, source){
+    pendingGroup = companyName;
+    if(source === 'library') libraryInput.click();
+    else cameraInput.click();
+  }
+
+  let ocrInFlightId = null;
+
+  // Tesseract's worker occasionally throws an internal error (a
+  // WASM core/worker version mismatch — "SetImageFile" is the tell) that
+  // bypasses our own try/catch entirely, since it happens inside the
+  // library's own message-handling code, not as a rejected promise. When
+  // that happens, don't leave the check stuck on "Analyzing…" forever —
+  // OCR is only a convenience auto-fill, never required to send, so fail
+  // it immediately and let the person type the company/amount by hand.
+  window.addEventListener('error', (e) => {
+    const msg = (e && e.message) || '';
+    if(/SetImageFile|RecognizeUTF8Text|tesseract/i.test(msg) && ocrInFlightId !== null){
+      const check = checks.find(c => c.id === ocrInFlightId);
+      if(check && check.ocrStatus === 'reading'){
+        check.ocrStatus = 'error';
+        ocrInFlightId = null;
+        render();
+      }
+    }
+  });
+
+  async function runOCR(check){
+    ocrInFlightId = check.id;
+    try{
+      const { data } = await Promise.race([
+        (async () => {
+          const worker = await Tesseract.createWorker('eng');
+          try{
+            return await worker.recognize(check.frontDataUrl);
+          } finally {
+            worker.terminate().catch(() => {});
+          }
+        })(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('OCR timed out')), 20000))
+      ]);
+      const text = data.text || '';
+      check.ocrText = text;
+      if(!check.companyLocked){
+        check.company = guessCompany(text);
+      }
+      check.amount = guessAmount(text);
+      check.ocrStatus = 'done';
+      if(check.company && !knownCompanies.includes(check.company)){
+        knownCompanies.push(check.company);
+      }
+    }catch(err){
+      console.error(err);
+      check.ocrStatus = 'error';
+    }
+    if(ocrInFlightId === check.id) ocrInFlightId = null;
+    render();
+  }
+
+  function guessCompany(text){
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    for(const line of lines){
+      const letters = (line.match(/[A-Za-z]/g) || []).length;
+      const looksLikeDate = /\d{1,2}\/\d{1,2}\/\d{2,4}/.test(line);
+      const looksLikeNumber = /^[\d\s.,$-]+$/.test(line);
+      if(letters >= 4 && !looksLikeDate && !looksLikeNumber && line.length <= 48){
+        return line.replace(/[^A-Za-z0-9&.,'\- ]/g, '').trim();
+      }
+    }
+    return '';
+  }
+
+  function guessAmount(text){
+    const match = text.match(/\$\s?[\d,]+\.\d{2}/);
+    return match ? match[0].replace(/\s/g,'').replace('$','') : '';
+  }
+
+  function removeCheck(id){
+    checks = checks.filter(c => c.id !== id);
+    render();
+  }
+
+  function updateField(id, field, value){
+    const c = checks.find(c => c.id === id);
+    if(c) c[field] = value;
+    if(field === 'company' && value && !knownCompanies.includes(value)){
+      knownCompanies.push(value);
+    }
+    renderGroups(); // company/amount edits only need to refresh grouping + totals
+  }
+
+  function normalize(name){
+    return name.trim().toLowerCase();
+  }
+
+  function groupByCompany(){
+    const groups = {};
+    // The five destination sections always exist, even when empty, so
+    // checks can be added straight into them.
+    DESTINATIONS.forEach(d => {
+      groups[normalize(d.name)] = { display: d.name, items: [], fixed: true, destKey: d.key };
+    });
+    checks.forEach(c => {
+      if(!c.company.trim()) return; // still needs a company — stays in the inbox
+      const key = normalize(c.company);
+      if(!groups[key]) groups[key] = { display: c.company.trim(), items: [], fixed: false };
+      groups[key].items.push(c);
+    });
+    return groups;
+  }
+
+  function render(){
+    renderInbox();
+    renderGroups();
+  }
+
+  function renderInbox(){
+    // Checks captured via a company section's "Add Check" button live in
+    // that section, not here. The inbox is only for top-level captures
+    // that still need a company assigned.
+    const inboxChecks = checks.filter(c => !c.companyLocked);
+    inboxCountEl.textContent = inboxChecks.length;
+    if(inboxChecks.length === 0){
+      inboxEl.innerHTML = '<div class="cc-empty">No unassigned checks. Use "Take Photo" above, or add checks directly to a company section below.</div>';
+      return;
+    }
+    inboxEl.innerHTML = inboxChecks.map(c => {
+      const statusLabel = c.ocrStatus === 'reading' ? 'Analyzing…' : c.ocrStatus === 'error' ? 'Unreadable' : 'Ready';
+      const datalist = `cc-dl-${c.id}`;
+      return `
+        <div class="cc-card">
+          <img class="cc-thumb" src="${c.frontDataUrl}">
+          <div class="cc-card-body">
+            <div class="cc-card-top">
+              <span class="cc-status ${c.ocrStatus}">${statusLabel}</span>
+              <button class="cc-remove" data-remove="${c.id}" aria-label="Remove">${ICON_CLOSE}</button>
+            </div>
+            <div class="cc-mini-field">
+              <label>Company</label>
+              <input list="${datalist}" data-field="company" data-id="${c.id}" value="${escapeAttr(c.company)}" placeholder="${c.ocrStatus === 'reading' ? 'reading…' : 'type or fix company name'}">
+              <datalist id="${datalist}">
+                ${knownCompanies.map(n => `<option value="${escapeAttr(n)}">`).join('')}
+              </datalist>
+            </div>
+            <div class="cc-mini-field">
+              <label>Amount (optional)</label>
+              <input data-field="amount" data-id="${c.id}" value="${escapeAttr(c.amount)}" placeholder="0.00">
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    inboxEl.querySelectorAll('[data-remove]').forEach(btn => {
+      btn.addEventListener('click', () => removeCheck(Number(btn.dataset.remove)));
+    });
+    inboxEl.querySelectorAll('[data-field]').forEach(input => {
+      input.addEventListener('input', () => {
+        updateField(Number(input.dataset.id), input.dataset.field, input.value);
+      });
+    });
+  }
+
+  function renderGroups(){
+    const groups = groupByCompany();
+    // Fixed destination sections first (in DESTINATIONS order), then any
+    // extra OCR-derived companies alphabetically.
+    const fixedKeys = DESTINATIONS.map(d => normalize(d.name));
+    const extraKeys = Object.keys(groups).filter(k => !groups[k].fixed).sort();
+    const keys = [...fixedKeys, ...extraKeys];
+
+    const anyCompleteChecks = checks.some(c => c.company.trim());
+
+    groupsEl.innerHTML = keys.map(key => {
+      const g = groups[key];
+      const total = g.items.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+      const hasAmounts = g.items.some(c => c.amount);
+      // Duplicate detection: two checks in the same section with the same
+      // amount is worth a second look before sending.
+      const amountCounts = {};
+      g.items.forEach(c => {
+        const a = (c.amount || '').trim();
+        if(a) amountCounts[a] = (amountCounts[a] || 0) + 1;
+      });
+      const isDupe = (c) => {
+        const a = (c.amount || '').trim();
+        return a && amountCounts[a] > 1;
+      };
+      const dupeCount = g.items.filter(isDupe).length;
+      if(!(key in groupDestinations)){
+        groupDestinations[key] = g.fixed ? g.destKey : guessDestination(g.display);
+      }
+      const chosen = groupDestinations[key];
+      const options = ['<option value="">Choose destination…</option>']
+        .concat(DESTINATIONS.map(d =>
+          `<option value="${d.key}" ${d.key === chosen ? 'selected' : ''}>${escapeAttr(d.name)}</option>`
+        )).join('');
+
+      const itemRows = g.items.map(c => `
+        <div class="cc-item-row">
+          <img class="cc-item-thumb" src="${c.frontDataUrl}">
+          <span class="cc-item-amount">${c.amount ? '$' + escapeAttr(c.amount) : ''}</span>
+          ${isDupe(c) ? '<span class="cc-item-warn dupe">same amount ×' + amountCounts[(c.amount||'').trim()] + '</span>' : ''}
+          <button class="cc-remove" data-remove="${c.id}" aria-label="Remove">${ICON_CLOSE}</button>
+        </div>`).join('');
+
+      return `
+        <div class="cc-group" data-key="${escapeAttr(key)}">
+          <div class="cc-group-head">
+            <span class="cc-group-name">${escapeAttr(g.display)}</span>
+            <span class="cc-group-meta">${g.items.length} check${g.items.length === 1 ? '' : 's'}${dupeCount ? ` · possible duplicates` : ''}</span>
+          </div>
+          ${itemRows || '<div class="cc-group-empty">No checks yet.</div>'}
+          ${hasAmounts ? `<div class="cc-group-total">Total: $${total.toFixed(2)}</div>` : ''}
+          <div class="cc-group-addrow">
+            <button class="cc-btn" data-addfront="${escapeAttr(g.display)}" data-source="camera">${ICON_CAMERA} Add Check</button>
+            <button class="cc-btn" data-addfront="${escapeAttr(g.display)}" data-source="library">${ICON_IMAGE} From Library</button>
+          </div>
+          ${g.fixed ? '' : `
+          <div class="cc-dest-row">
+            <span class="cc-dest-label">Send to</span>
+            <select class="cc-dest-select" data-dest="${escapeAttr(key)}">${options}</select>
+          </div>`}
+          ${g.items.length ? `
+          <div class="cc-group-actions">
+            <button class="cc-btn" data-pdf="${escapeAttr(key)}">${ICON_DOWNLOAD} Compile PDF</button>
+            <button class="cc-btn primary" data-send="${escapeAttr(key)}">Send to Rocket.Chat</button>
+          </div>` : ''}
+          <div class="cc-group-msg" data-msg="${escapeAttr(key)}"></div>
+        </div>`;
+    }).join('')
+    + `
+      <div class="cc-sendall-wrap">
+        <button class="cc-btn primary cc-sendall" id="cc-sendall-btn" ${anyCompleteChecks ? '' : 'disabled'}>Send All to Rocket.Chat</button>
+        <div class="cc-group-msg" id="cc-sendall-msg"></div>
+      </div>`;
+
+    groupsEl.querySelectorAll('[data-pdf]').forEach(btn => {
+      btn.addEventListener('click', () => downloadPdf(btn.dataset.pdf, btn));
+    });
+    groupsEl.querySelectorAll('[data-send]').forEach(btn => {
+      btn.addEventListener('click', () => sendGroup(btn.dataset.send, btn));
+    });
+    groupsEl.querySelectorAll('[data-dest]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        groupDestinations[sel.dataset.dest] = sel.value;
+      });
+    });
+    groupsEl.querySelectorAll('[data-addfront]').forEach(btn => {
+      btn.addEventListener('click', () => requestGroupFront(btn.dataset.addfront, btn.dataset.source));
+    });
+    groupsEl.querySelectorAll('[data-remove]').forEach(btn => {
+      btn.addEventListener('click', () => removeCheck(Number(btn.dataset.remove)));
+    });
+    const sendAllBtn = document.getElementById('cc-sendall-btn');
+    if(sendAllBtn) sendAllBtn.addEventListener('click', sendAll);
+  }
+
+  function escapeAttr(str){
+    return String(str || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  }
+
+  function batchDateString(){
+    return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  function buildPdf(group){
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'pt', format: 'letter' });
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const margin = 40;
+    let pageCount = 0;
+    const dateStr = batchDateString();
+
+    // Dimensions were captured once at photo-capture time (see
+    // compressImage) — this function never re-loads an image, so there's
+    // nothing here that can hang on a slow or unusual file.
+    function addSidePage(check, checkIndex, dataUrl, width, height){
+      if(pageCount > 0) doc.addPage();
+      pageCount++;
+      doc.setFont('courier', 'bold');
+      doc.setFontSize(13);
+      doc.text(group.display, margin, margin);
+      doc.setFont('courier', 'normal');
+      doc.setFontSize(9);
+      doc.text(`${dateStr} — Check ${checkIndex + 1} of ${group.items.length}${check.amount ? '   $' + check.amount : ''}`, margin, margin + 16);
+
+      const maxW = pageW - margin * 2;
+      const maxH = pageH - margin * 2 - 50;
+      let w = width || 1000, h = height || 450;
+      const scale = Math.min(maxW / w, maxH / h, 1);
+      w *= scale; h *= scale;
+      const x = margin + (maxW - w) / 2;
+      const y = margin + 40;
+
+      // A real compressed check photo is at minimum a few KB of base64.
+      // If it's not, the image data itself is broken (this shouldn't
+      // happen now that handleCapture screens files up front, but this
+      // is the last line of defense) — show that plainly in the PDF
+      // instead of leaving a confusing blank page.
+      if(!dataUrl || dataUrl.length < 2000){
+        doc.setDrawColor(200, 50, 50);
+        doc.rect(x, y, w || 300, h || 150);
+        doc.setTextColor(200, 50, 50);
+        doc.setFont('courier', 'bold');
+        doc.setFontSize(11);
+        doc.text('Image failed to load — re-photograph this check.', x + 10, y + 20);
+        doc.setTextColor(0, 0, 0);
+      } else {
+        try{
+          doc.addImage(dataUrl, 'JPEG', x, y, w, h);
+        }catch(err){
+          console.error('addImage failed:', err);
+          doc.setDrawColor(200, 50, 50);
+          doc.rect(x, y, w, h);
+          doc.setTextColor(200, 50, 50);
+          doc.setFont('courier', 'bold');
+          doc.setFontSize(11);
+          doc.text('Image failed to load — re-photograph this check.', x + 10, y + 20);
+          doc.setTextColor(0, 0, 0);
+        }
+      }
+    }
+
+    group.items.forEach((c, i) => {
+      addSidePage(c, i, c.frontDataUrl, c.frontWidth, c.frontHeight);
+    });
+    return doc;
+  }
+
+  async function downloadPdf(key, btn){
+    const groups = groupByCompany();
+    const group = groups[key];
+    if(!group) return;
+    setBtnLoading(btn, true, `${ICON_DOWNLOAD} Compile PDF`);
+    try{
+      const doc = await buildPdf(group);
+      doc.save(`${group.display.replace(/[^a-z0-9]+/gi,'-')}-checks-${new Date().toISOString().slice(0,10)}.pdf`);
+    } finally {
+      setBtnLoading(btn, false, `${ICON_DOWNLOAD} Compile PDF`);
+    }
+  }
+
+  // Core send logic shared by per-group send and Send All.
+  // Returns { ok, message }. Does not touch the DOM.
+  async function performSend(key, group){
+    const server = $('cc-server').value.trim().replace(/\/$/, '');
+    const userId = $('cc-userid').value.trim();
+    const token = $('cc-token').value.trim();
+
+    if(!server || !userId || !token){
+      return { ok: false, message: 'Add your Rocket.Chat connection details in Settings above before sending.', openSettings: true };
+    }
+
+    const destKey = groupDestinations[key];
+    const dest = DESTINATIONS.find(d => d.key === destKey);
+    if(!dest){
+      return { ok: false, message: 'Choose a destination chat for this group before sending.' };
+    }
+    const roomId = $(dest.inputId).value.trim();
+    if(!roomId){
+      return { ok: false, message: `No Room ID saved for ${dest.name} yet — add it in Settings.`, openSettings: true };
+    }
+
+    try{
+      const doc = await Promise.race([
+        buildPdf(group),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Building the PDF took too long — one of the photos may not have saved correctly. Try removing and re-adding the affected check.')), 20000))
+      ]);
+      const total = group.items.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+      const hasAmounts = group.items.some(c => c.amount);
+      const dateStr = batchDateString();
+      const isoDate = new Date().toISOString().slice(0, 10);
+      const filename = `${group.display.replace(/[^a-z0-9]+/gi,'-')}-checks-${isoDate}.pdf`;
+      const summaryText = `${group.items.length} check${group.items.length === 1 ? '' : 's'} — ${group.display}${hasAmounts ? ` — $${total.toFixed(2)}` : ''} — ${dateStr}`;
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+      // The upload service caps request size around 6MB. Check before
+      // attempting the network call, so a batch that's genuinely too big
+      // fails with a clear, actionable message instead of a raw HTTP 413.
+      const approxSendSize = pdfBase64.length + 2000; // + JSON/field overhead
+      if(approxSendSize > 5.5 * 1024 * 1024){
+        const half = Math.ceil(group.items.length / 2);
+        return { ok: false, message: `This batch (${group.items.length} checks) is too large to send in one upload. Split it into two sends — e.g. send the first ${half} checks, then the rest — or remove a check and try again.` };
+      }
+
+      // Upload via the backend proxy — the browser talks only to our own
+      // site (no CORS), and the server forwards to Rocket.Chat.
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      const res = await fetch('/.netlify/functions/rc-upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          server, userId, authToken: token, roomId,
+          filename,
+          msg: summaryText,
+          pdfBase64
+        })
+      });
+      clearTimeout(timer);
+
+      if(res.status === 413){
+        const half = Math.ceil(group.items.length / 2);
+        return { ok: false, message: `This batch (${group.items.length} checks) is too large to upload in one request. Split it into two sends — e.g. the first ${half} checks, then the rest.` };
+      }
+
+      const result = await res.json().catch(() => ({ ok: false, status: res.status, body: 'Unexpected response from upload service.' }));
+
+      if(result.ok){
+        // Clear the sent checks so the section resets for the next batch.
+        const sentIds = new Set(group.items.map(c => c.id));
+        checks = checks.filter(c => !sentIds.has(c.id));
+
+        let msg = `Sent to ${dest.name} at ${new Date().toLocaleTimeString()}`;
+        // Email a copy only when the person has turned it on in Settings.
+        // A failure here shouldn't undo a successful Rocket.Chat send.
+        if($('cc-email-toggle').checked){
+          const emailResult = await emailRecordsCopy(doc, filename, group.display, summaryText);
+          if(emailResult.ok) msg += ' · copy emailed to records';
+          else msg += ` · email copy failed: ${emailResult.message}`;
+        }
+        return { ok: true, message: msg };
+      }
+      return { ok: false, message: `Rocket.Chat rejected the upload (${result.status || res.status}). ${(result.body || '').slice(0,180)}` };
+    } catch(err){
+      console.error(err);
+      const timedOut = err.name === 'AbortError';
+      return { ok: false, message: timedOut
+        ? 'Upload timed out after 45 seconds. Check your internet connection and try again.'
+        : 'Could not reach the upload service. Check your internet connection — and note this only works from the deployed site, not a locally opened file.' };
+    }
+  }
+
+  // Sends the PDF to the backend email function, which forwards it to the
+  // records inbox. Hard 15-second timeout — a slow or unconfigured email
+  // service must never hang the send flow.
+  async function emailRecordsCopy(doc, filename, companyName, summaryText){
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try{
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+      const res = await fetch('/.netlify/functions/send-check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({
+          filename,
+          pdfBase64,
+          subject: `Check batch — ${companyName} — ${batchDateString()}`,
+          bodyText: summaryText
+        })
+      });
+      if(res.ok) return { ok: true };
+      const body = await res.text();
+      return { ok: false, message: body.slice(0, 140) };
+    }catch(err){
+      return { ok: false, message: err.name === 'AbortError' ? 'email service timed out' : 'email service unreachable' };
+    }finally{
+      clearTimeout(timer);
+    }
+  }
+
+  function confirmText(group, destName){
+    const total = group.items.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+    const hasAmounts = group.items.some(c => c.amount);
+    const counts = {};
+    group.items.forEach(c => { const a = (c.amount||'').trim(); if(a) counts[a] = (counts[a]||0)+1; });
+    const dupes = Object.keys(counts).filter(a => counts[a] > 1);
+    let text = `Send ${group.items.length} check${group.items.length === 1 ? '' : 's'}`;
+    if(hasAmounts) text += ` ($${total.toFixed(2)})`;
+    text += ` to ${destName}?`;
+    if(dupes.length) text += `\n\nHeads up: ${dupes.map(a => '$' + a).join(', ')} appears more than once in this batch — possible duplicate.`;
+    if($('cc-email-toggle').checked) text += `\n\nA PDF copy will also be emailed to records.`;
+    text += `\n\nThis can't be undone.`;
+    return text;
+  }
+
+  async function sendGroup(key, btn){
+    const groups = groupByCompany();
+    const group = groups[key];
+    if(!group || !group.items.length) return;
+    const msgEl = document.querySelector(`[data-msg="${key}"]`);
+
+    const destKey = groupDestinations[key];
+    const dest = DESTINATIONS.find(d => d.key === destKey);
+    if(dest && !window.confirm(confirmText(group, dest.name))){
+      return; // person cancelled — do nothing
+    }
+
+    setBtnLoading(btn, true, 'Send to Rocket.Chat');
+    const result = await performSend(key, group);
+    if(result.openSettings) settingsPanel.classList.add('open');
+
+    if(result.ok){
+      render(); // re-render clears the section; message won't survive, so re-attach it
+      const freshMsg = document.querySelector(`[data-msg="${key}"]`);
+      if(freshMsg){
+        freshMsg.innerHTML = `${ICON_CHECK} ${escapeAttr(result.message)}`;
+        freshMsg.className = 'cc-group-msg ok';
+      }
+    } else {
+      msgEl.textContent = result.message;
+      msgEl.className = 'cc-group-msg err';
+      setBtnLoading(btn, false, 'Send to Rocket.Chat');
+    }
+  }
+
+  async function sendAll(){
+    const btn = document.getElementById('cc-sendall-btn');
+    const summaryEl = document.getElementById('cc-sendall-msg');
+    const groups = groupByCompany();
+    const keys = Object.keys(groups).filter(k => groups[k].items.length > 0);
+    if(!keys.length) return;
+
+    const lines = keys.map(k => {
+      const g = groups[k];
+      const total = g.items.reduce((sum, c) => sum + (parseFloat(c.amount) || 0), 0);
+      const hasAmounts = g.items.some(c => c.amount);
+      const destKey = groupDestinations[k];
+      const dest = DESTINATIONS.find(d => d.key === destKey);
+      return `• ${g.display}: ${g.items.length} check${g.items.length === 1 ? '' : 's'}${hasAmounts ? ` ($${total.toFixed(2)})` : ''}${dest ? ' → ' + dest.name : ' → no destination chosen'}`;
+    });
+    const confirmed = window.confirm(
+      `Send all batches?\n\n${lines.join('\n')}${$('cc-email-toggle').checked ? '\n\nPDF copies will also be emailed to records.' : ''}\n\nThis can't be undone.`
+    );
+    if(!confirmed) return;
+
+    setBtnLoading(btn, true, 'Send All to Rocket.Chat');
+    const results = [];
+    for(const key of keys){
+      const result = await performSend(key, groups[key]);
+      results.push({ name: groups[key].display, ...result });
+    }
+
+    render();
+    const freshSummary = document.getElementById('cc-sendall-msg');
+    const sent = results.filter(r => r.ok);
+    const failed = results.filter(r => !r.ok);
+    if(freshSummary){
+      const parts = [];
+      if(sent.length) parts.push(`Sent: ${sent.map(r => r.name).join(', ')}.`);
+      if(failed.length) parts.push(failed.map(r => `${r.name}: ${r.message}`).join(' '));
+      freshSummary.textContent = parts.join(' ');
+      freshSummary.className = failed.length ? 'cc-group-msg err' : 'cc-group-msg ok';
+    }
+    if(failed.some(r => r.openSettings)) settingsPanel.classList.add('open');
+  }
+
+  function setBtnLoading(btn, loading, label){
+    btn.disabled = loading;
+    btn.innerHTML = loading ? `<span class="cc-spinner"></span> Working…` : label;
+  }
+
+  loadSettings();
+  render();
+})();
+</script>
+</body>
+</html>

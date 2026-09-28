@@ -1,0 +1,11 @@
+{
+  "name": "effectiff-scanner",
+  "private": true,
+  "version": "2.0.0",
+  "description": "Effectiff check scanner and contracts finder (SAM.gov, public RFP web search, private-company supplier research).",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "@netlify/functions": "^2.8.0",
+    "nodemailer": "^6.9.13"
+  }
+}

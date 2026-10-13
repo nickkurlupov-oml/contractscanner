@@ -6,10 +6,11 @@
 // read/write fails with "The environment has not been configured to use
 // Netlify Blobs". openStore() does that for you.
 //
-// Reads use strong consistency where the environment supports it, so a
-// status change made on one device shows up immediately on another. If
-// strong reads aren't available, it quietly falls back to the default
-// (eventual) consistency rather than failing.
+// Uses Netlify Blobs' standard (eventual) consistency. Strong consistency is
+// NOT available in this function style: connectLambda() never provides the
+// 'uncachedEdgeURL' it needs, and a store configured for strong consistency
+// fails on every write as well as every read. A change saved on one device can
+// take up to about a minute to appear on another device after a refresh.
 
 const { connectLambda, getStore } = require('@netlify/blobs');
 
@@ -36,26 +37,15 @@ function connectBlobs(event){
 
 function openStore(event){
   connectBlobs(event);
-  try{
-    return getStore({ name: STORE_NAME, consistency: 'strong' });
-  }catch{
-    return getStore(STORE_NAME);
-  }
+  return getStore(STORE_NAME);
 }
 
+// Returns the fallback only when the key doesn't exist yet. Real errors are
+// thrown, never swallowed: silently treating a failed read as "empty" could
+// lead a later write to erase saved data.
 async function readJson(store, key, fallback){
-  try{
-    const v = await store.get(key, { type: 'json' });
-    return v === null || v === undefined ? fallback : v;
-  }catch(err){
-    // Strong consistency not available here → retry with default consistency.
-    try{
-      const v = await store.get(key, { type: 'json', consistency: 'eventual' });
-      return v === null || v === undefined ? fallback : v;
-    }catch{
-      return fallback;
-    }
-  }
+  const v = await store.get(key, { type: 'json' });
+  return v === null || v === undefined ? fallback : v;
 }
 
 async function writeJson(store, key, value){

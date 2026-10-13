@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Effectiff Contracts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#FFFFFF; --wash:#F6F6F5; --ink:#1A1A1A; --graphite:#5C5C5C; --rule:#E3E3E3;
+    --red:#D6291C; --red-dark:#A81F15; --red-wash:#FCEBE9;
+    --new-fg:#1F4E9C; --new-bg:#EAF1FB;
+    --int-fg:#7A5A00; --int-bg:#FFF3D1;
+    --app-fg:#2E6B45; --app-bg:#E5F3EA;
+    --sans:'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.45;}
+  a{color:inherit;}
+  button,input,select,textarea{font:inherit;color:inherit;}
+  :focus-visible{outline:2px solid var(--red);outline-offset:2px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px;}
+
+  /* header */
+  header{border-bottom:1px solid var(--rule);background:var(--paper);}
+  .head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 0 14px;}
+  .brand{margin:0;font-size:20px;font-weight:700;letter-spacing:-0.01em;}
+  .brand .e{color:var(--red);font-weight:800;}
+  .brand .w{font-weight:400;color:#3D3D3D;}
+  .brand small{display:block;font-size:13px;font-weight:400;color:var(--graphite);letter-spacing:0;margin-top:2px;}
+  .icon-btn{width:36px;height:36px;border:1px solid var(--rule);border-radius:8px;background:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;color:#3D3D3D;flex-shrink:0;}
+  .icon-btn:hover{border-color:var(--red);color:var(--red);}
+
+  .settings{display:none;background:var(--wash);border:1px solid var(--rule);border-radius:8px;padding:14px;margin:0 0 14px;}
+  .settings.open{display:block;}
+  .settings h2{font-size:15px;margin:0 0 8px;}
+  .settings label{display:block;font-size:13px;font-weight:500;margin-bottom:4px;}
+  .settings input{width:100%;padding:9px 10px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);}
+  .settings p{font-size:13px;color:var(--graphite);margin:8px 0 0;}
+  .settings .usage{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);}
+
+  /* segmented tabs */
+  .segments{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--ink);border-radius:10px;overflow:hidden;margin:16px 0 18px;}
+  .segments button{background:var(--paper);border:0;border-right:1px solid var(--ink);padding:11px 6px;cursor:pointer;font-weight:600;font-size:14px;display:flex;flex-direction:column;align-items:center;gap:1px;}
+  .segments button:last-child{border-right:0;}
+  .segments button .count{font-size:12px;font-weight:400;color:var(--graphite);}
+  .segments button[aria-selected="true"]{background:var(--ink);color:var(--paper);}
+  .segments button[aria-selected="true"] .count{color:#CFCFCF;}
+
+  /* tab intro */
+  .intro{display:flex;gap:14px;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+  .intro p{margin:0;color:#3D3D3D;font-size:14px;max-width:52ch;}
+  .intro .status{display:block;margin-top:4px;font-size:13px;color:var(--graphite);}
+  .intro .status.busy{color:var(--new-fg);}
+  .intro .status.err{color:var(--red-dark);}
+
+  .notice{background:var(--wash);border-left:3px solid var(--red);padding:10px 12px;font-size:13.5px;margin-bottom:12px;border-radius:0 6px 6px 0;}
+
+  /* buttons */
+  .btn{padding:9px 13px;border-radius:6px;border:1px solid var(--rule);background:var(--paper);font-weight:600;font-size:13.5px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;text-decoration:none;}
+  .btn:hover{border-color:var(--red);color:var(--red);}
+  .btn.primary{background:var(--red);border-color:var(--red);color:#fff;}
+  .btn.primary:hover{background:var(--red-dark);border-color:var(--red-dark);color:#fff;}
+  .btn.sm{padding:6px 10px;font-size:12.5px;}
+  .btn:disabled{opacity:.45;cursor:not-allowed;}
+  .linklike{background:none;border:0;padding:0;color:var(--red-dark);text-decoration:underline;cursor:pointer;font-size:inherit;}
+
+  /* toolbar */
+  .toolbar{display:flex;flex-direction:column;gap:8px;margin-bottom:12px;}
+  .search{width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:6px;}
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;}
+  .chip{padding:6px 12px;border:1px solid var(--rule);border-radius:999px;background:var(--paper);font-size:13px;cursor:pointer;white-space:nowrap;}
+  .chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);}
+  .toolrow{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--graphite);}
+  .toolrow label{display:flex;align-items:center;gap:6px;cursor:pointer;}
+  input[type=checkbox]{accent-color:var(--red);width:16px;height:16px;}
+
+  /* opportunity cards */
+  .card{display:grid;grid-template-columns:auto 58px 1fr;gap:12px;border:1px solid var(--rule);border-radius:8px;padding:14px;margin-bottom:10px;background:var(--paper);}
+  .card.dismissed{opacity:.6;}
+  .card > input[type=checkbox]{margin-top:4px;}
+  .stub{border:1px solid var(--rule);border-radius:6px;text-align:center;padding:6px 0 7px;align-self:start;line-height:1.1;}
+  .stub .m{font-size:12px;color:var(--graphite);}
+  .stub .d{font-size:22px;font-weight:700;}
+  .stub .n{font-size:11px;color:var(--graphite);margin-top:2px;}
+  .stub.soon{border-color:var(--red);background:var(--red-wash);}
+  .stub.soon .d,.stub.soon .n{color:var(--red-dark);}
+  .stub.closed{opacity:.55;}
+  .stub.none .d{font-size:16px;color:var(--graphite);padding:3px 0;}
+  .body{min-width:0;}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+  .tag{font-size:12px;padding:2px 8px;border-radius:4px;background:var(--wash);color:#3D3D3D;}
+  .tag.st-new{background:var(--new-bg);color:var(--new-fg);}
+  .tag.st-interested{background:var(--int-bg);color:var(--int-fg);}
+  .tag.st-applied{background:var(--app-bg);color:var(--app-fg);}
+  .card h3{margin:0 0 3px;font-size:16px;line-height:1.35;}
+  .org{font-size:14px;color:#3D3D3D;}
+  .facts{margin:8px 0 0;font-size:13px;color:var(--graphite);display:grid;grid-template-columns:auto 1fr;gap:2px 10px;}
+  .facts dt{font-weight:500;color:#3D3D3D;}
+  .facts dd{margin:0;overflow-wrap:anywhere;}
+  .mono{font-family:var(--mono);font-size:12.5px;}
+  .summary{font-size:14px;margin:8px 0 0;}
+  .caveat{font-size:12.5px;color:var(--graphite);margin:8px 0 0;}
+  .actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .notes{width:100%;margin-top:8px;padding:8px 10px;border:1px solid var(--rule);border-radius:6px;font-size:13.5px;resize:vertical;min-height:38px;}
+  .empty{border:1.5px dashed var(--rule);border-radius:8px;padding:24px 16px;text-align:center;color:var(--graphite);font-size:14px;}
+
+  /* private tab */
+  .research{display:flex;gap:8px;margin-bottom:8px;}
+  .research input{flex:1;padding:10px 12px;border:1px solid var(--rule);border-radius:6px;min-width:0;}
+  .sec{font-size:17px;margin:22px 0 10px;display:flex;align-items:baseline;gap:8px;}
+  .sec:first-of-type{margin-top:8px;}
+  .sec-count{font-size:13px;font-weight:400;color:var(--graphite);}
+  .prospect{border:1px solid var(--rule);border-left:3px solid var(--red);border-radius:8px;padding:14px;margin-bottom:10px;}
+  .prospect-head{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;}
+  .prospect h3{margin:0;font-size:16px;}
+  .signal{font-size:14px;margin:8px 0 0;}
+  .why{font-size:14px;margin:6px 0 0;color:#3D3D3D;}
+  .sugg{list-style:none;margin:0;padding:0;border:1px solid var(--rule);border-radius:8px;}
+  .sugg li{padding:12px 14px;border-bottom:1px solid var(--rule);}
+  .sugg li:last-child{border-bottom:0;}
+  .sugg .name{font-weight:600;}
+  .sugg .loc{font-size:13px;color:var(--graphite);}
+  .sugg p{margin:4px 0 0;font-size:14px;color:#3D3D3D;}
+  .sugg .actions{margin-top:8px;}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0;}
+  .origin{font-size:13.5px;color:#3D3D3D;margin:8px 0 0;}
+  .dismissed-list{list-style:none;padding:0;margin:0 0 12px;}
+  .dismissed-list li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--rule);font-size:14px;}
+  details.guide{border:1px solid var(--rule);border-radius:8px;padding:0 14px;margin-bottom:16px;background:var(--wash);}
+  details.guide summary{cursor:pointer;padding:12px 0;font-weight:600;}
+  details.guide ol{padding-left:20px;margin:0 0 14px;}
+  details.guide li{margin-bottom:10px;font-size:14px;}
+  details.guide ul{padding-left:18px;margin:6px 0 0;}
+  details.guide ul li{margin-bottom:3px;}
+  .company{border:1px solid var(--rule);border-radius:8px;padding:14px;margin-bottom:10px;}
+  .company-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;}
+  .company h3{margin:0;font-size:17px;}
+  .company-controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:13px;}
+  .company-controls label{display:flex;flex-direction:column;gap:3px;color:var(--graphite);}
+  .company-controls select,.company-controls input{padding:7px 8px;border:1px solid var(--rule);border-radius:6px;background:var(--paper);color:var(--ink);}
+  .findings{margin-top:12px;padding-top:12px;border-top:1px solid var(--rule);font-size:14px;}
+  .findings h4{font-size:14px;margin:12px 0 4px;}
+  .findings h4:first-child{margin-top:0;}
+  .findings ol,.findings ul{margin:0;padding-left:20px;}
+  .findings li{margin-bottom:3px;}
+  .reg{display:inline-block;font-size:12.5px;padding:2px 8px;border-radius:4px;background:var(--wash);margin-right:6px;}
+  .reg.open{background:var(--app-bg);color:var(--app-fg);}
+  .reg.invitation_only{background:var(--int-bg);color:var(--int-fg);}
+  .busy-line{font-size:13.5px;color:var(--new-fg);margin-top:10px;}
+  .err-line{font-size:13.5px;color:var(--red-dark);margin-top:10px;}
+  .footer-actions{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 30px;}
+
+  /* selection bar */
+  .selbar{position:sticky;bottom:0;background:var(--paper);border-top:1px solid var(--rule);padding:10px 0;display:none;}
+  .selbar.show{display:block;}
+  .selbar .wrap{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .selbar .count{font-size:13px;color:var(--graphite);margin-right:auto;}
+
+  .toast{position:fixed;left:50%;bottom:72px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 14px;border-radius:8px;font-size:13.5px;max-width:min(92vw,560px);display:none;z-index:50;}
+  .toast.show{display:block;}
+  .toast.err{background:var(--red-dark);}
+
+  [hidden]{display:none !important;}
+  @media (max-width:560px){
+    .intro{flex-direction:column;}
+    .card{grid-template-columns:auto 50px 1fr;gap:10px;padding:12px;}
+    .research{flex-direction:column;}
+  }
+  @media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto !important;} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="head">
+      <h1 class="brand"><span class="e">e</span><span class="w">ffectiff</span> Contracts<small>Government, public, and private opportunities for language services</small></h1>
+      <button class="icon-btn" id="gear" aria-label="Settings" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.97 7.97 0 0 0 0-2l2-1.6-2-3.4-2.4 1a8 8 0 0 0-1.7-1L14.9 3h-4l-.4 2.9a8 8 0 0 0-1.7 1l-2.4-1-2 3.4L6.4 11a7.97 7.97 0 0 0 0 2l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 1.7 1l.4 3h4l.4-2.9a8 8 0 0 0 1.7-1l2.4 1 2-3.4z"/></svg></button>
+    </div>
+    <div class="settings" id="settings">
+      <h2>Settings</h2>
+      <label for="passcode">Team passcode</label>
+      <input id="passcode" type="password" autocomplete="off" placeholder="Leave blank if your team doesn't use one">
+      <p>Saved on this device only.</p>
+      <div class="usage" id="usage"></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="segments" role="tablist" aria-label="Contract sources">
+    <button role="tab" id="tab-btn-government" aria-controls="tab-government" data-tab="government">Government<span class="count" id="count-government">&nbsp;</span></button>
+    <button role="tab" id="tab-btn-public" aria-controls="tab-public" data-tab="public">Public<span class="count" id="count-public">&nbsp;</span></button>
+    <button role="tab" id="tab-btn-private" aria-controls="tab-private" data-tab="private">Private<span class="count" id="count-private">&nbsp;</span></button>
+  </div>
+
+  <!-- GOVERNMENT -->
+  <section id="tab-government" role="tabpanel" aria-labelledby="tab-btn-government" hidden>
+    <div class="intro">
+      <p>Federal notices for interpretation and translation services from SAM.gov, checked automatically every 6 hours.<span class="status" id="gov-status"></span></p>
+      <button class="btn" id="gov-scan">Scan SAM.gov now</button>
+    </div>
+    <div class="notice" id="gov-setup" hidden>Federal scanning is off. Add <b>SAM_API_KEY</b> in Netlify environment variables to turn it on. Use the Public API Key from your SAM.gov account (sam.gov → Account Details).</div>
+    <div class="toolbar">
+      <input class="search" type="search" id="gov-search" placeholder="Search title, agency, or solicitation number" aria-label="Search government contracts">
+      <div class="chips" id="gov-filters" role="group" aria-label="Filter by status"></div>
+      <div class="toolrow"><label><input type="checkbox" id="gov-selectall"> Select all shown</label><span id="gov-shown"></span></div>
+    </div>
+    <div id="gov-list"></div>
+  </section>
+
+  <!-- PUBLIC -->
+  <section id="tab-public" role="tabpanel" aria-labelledby="tab-btn-public" hidden>
+    <div class="intro">
+      <p>Open RFPs from states, cities, courts, schools, universities, hospitals, nonprofits, and companies, found by AI web search once a day.<span class="status" id="pub-status"></span></p>
+      <button class="btn" id="pub-scan">Search the web now</button>
+    </div>
+    <div class="notice" id="pub-setup" hidden>Web search is off. Add <b>ANTHROPIC_API_KEY</b> in Netlify environment variables to turn it on. The README explains the setup and cost.</div>
+    <div class="toolbar">
+      <input class="search" type="search" id="pub-search" placeholder="Search title, organization, or location" aria-label="Search public contracts">
+      <div class="chips" id="pub-filters" role="group" aria-label="Filter by status"></div>
+      <div class="toolrow"><label><input type="checkbox" id="pub-selectall"> Select all shown</label><span id="pub-shown"></span></div>
+    </div>
+    <div id="pub-list"></div>
+  </section>
+
+  <!-- PRIVATE -->
+  <section id="tab-private" role="tabpanel" aria-labelledby="tab-btn-private" hidden>
+    <div class="intro">
+      <p>Companies likely to buy interpretation and translation services, suggested by AI and refreshed weekly. Priorities show a current public sign that they're buying. Research a company to see how to register as its supplier.<span class="status" id="pr-status"></span></p>
+      <button class="btn" id="pr-find">Find more companies</button>
+    </div>
+    <div class="notice" id="co-setup" hidden>Company suggestions and research are off. Add <b>ANTHROPIC_API_KEY</b> in Netlify environment variables to turn them on. You can still add companies and track them by hand.</div>
+
+    <h2 class="sec">Priorities <span class="sec-count" id="pr-priority-count"></span></h2>
+    <div id="pr-priority"></div>
+
+    <h2 class="sec">More suggestions <span class="sec-count" id="pr-sugg-count"></span></h2>
+    <div class="toolbar"><input class="search" type="search" id="pr-search" placeholder="Filter by name, industry, or location" aria-label="Filter suggestions"></div>
+    <div id="pr-sugg"></div>
+    <div class="row-actions" id="pr-sugg-actions" hidden>
+      <button class="btn sm" id="pr-more" hidden>Show more</button>
+      <button class="btn sm" id="pr-csv">Export suggestions as CSV</button>
+      <button class="btn sm" id="pr-sheet">Send suggestions to Google Sheet</button>
+    </div>
+
+    <h2 class="sec">Tracking <span class="sec-count" id="co-count"></span></h2>
+    <div id="co-list"></div>
+    <div class="footer-actions" id="co-footer" hidden>
+      <button class="btn sm" id="co-csv">Export tracked as CSV</button>
+      <button class="btn sm" id="co-sheet">Send tracked to Google Sheet</button>
+    </div>
+
+    <details class="guide">
+      <summary>Add a company yourself</summary>
+      <form class="research" id="co-form">
+        <input id="co-name" type="text" placeholder="Company name" aria-label="Company name" maxlength="80" autocomplete="off">
+        <button class="btn primary" type="submit" id="co-research">Research company</button>
+        <button class="btn" type="button" id="co-add">Track without research</button>
+      </form>
+    </details>
+    <details class="guide">
+      <summary>How supplier registration works</summary>
+      <ol>
+        <li><b>Find the supplier portal.</b> Look for "Suppliers," "Supplier diversity," or "Doing business with us" on the company's site. Many run on SAP Ariba, Coupa, or Jaggaer. Research company finds it for you.</li>
+        <li><b>Check whether registration is open.</b> At many large companies, a buyer inside the company has to sponsor you before you can finish onboarding. Open registration usually adds you to a database buyers can search.</li>
+        <li><b>Prepare the standard documents.</b>
+          <ul>
+            <li>W-9</li>
+            <li>Certificate of insurance (general liability and professional liability are common; cyber liability is increasingly requested)</li>
+            <li>Business license</li>
+            <li>A one-page capability statement: languages, service types, turnaround times, notable clients</li>
+            <li>References and a rate sheet</li>
+            <li>A D-U-N-S number, which many companies still ask for</li>
+          </ul>
+        </li>
+        <li><b>Get certified if you qualify.</b> Supplier diversity programs recognize certifications such as NMSDC (minority-owned), WBENC (women-owned), NGLCC (LGBTQ+-owned), Disability:IN (disability-owned), and NaVOBA or SBA VetCert (veteran-owned). In California, the CPUC Supplier Clearinghouse verifies diverse suppliers for utilities. For language services, ISO 17100 (translation) and ISO 18841 (interpreting) carry weight, and healthcare clients will ask how you handle HIPAA.</li>
+        <li><b>Get in front of a buyer.</b> Registration alone rarely brings work. Find the teams that buy language services (localization, legal, HR, accessibility, patient services), attend supplier diversity events, and consider subcontracting to the large language vendors these companies already use. Many big companies track diverse spending by their main suppliers, which makes a diverse subcontractor attractive to those vendors.</li>
+        <li><b>Track follow-ups here.</b> Set a status and a follow-up date on each company.</li>
+      </ol>
+    </details>
+    <details class="guide" id="pr-dismissed-box" hidden>
+      <summary>Marked not a fit (<span id="pr-dismissed-count">0</span>)</summary>
+      <ul class="dismissed-list" id="pr-dismissed"></ul>
+    </details>
+  </section>
+</main>
+
+<div class="selbar" id="selbar">
+  <div class="wrap">
+    <span class="count" id="sel-count"></span>
+    <button class="btn sm" id="sel-csv">Export CSV</button>
+    <button class="btn sm primary" id="sel-sheet">Send to Google Sheet</button>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  const PASS_KEY = 'effectiff-contracts-passcode';
+  const TAB_KEY = 'effectiff-contracts-tab';
+
+  let data = { government: [], public: [], companies: [], prospects: [], governmentMeta: {}, publicStatus: {}, discoverStatus: {}, usage: null, setup: {} };
+  let suggShown = 12;
+  let tab = 'government';
+  const filters = { government: 'open', public: 'open' };
+  const selected = { government: new Set(), public: new Set() };
+  let pollTimer = null;
+  let renderDeferred = false;
+
+  // ---------- storage (per-device conveniences) ----------
+  function lsGet(k){ try{ return localStorage.getItem(k) || ''; }catch{ return ''; } }
+  function lsSet(k, v){ try{ localStorage.setItem(k, v); }catch{} }
+
+  // ---------- helpers ----------
+  function esc(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  function safeUrl(u){ return /^https?:\/\//i.test(String(u || '')) ? String(u) : ''; }
+  function parseDate(v){
+    if(!v) return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(v).trim());
+    const d = m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(v);
+    return isNaN(d) ? null : d;
+  }
+  function daysUntil(v){
+    const d = parseDate(v); if(!d) return null;
+    const a = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const n = new Date(); const b = new Date(n.getFullYear(), n.getMonth(), n.getDate());
+    return Math.round((a - b) / 86400000);
+  }
+  function fmtDate(v){ const d = parseDate(v); return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''; }
+  function fmtTime(v){ const d = v ? new Date(v) : null; return d && !isNaN(d) ? d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''; }
+  function money(n){ return '$' + (Number(n) || 0).toFixed(2); }
+
+  let toastTimer = null;
+  function toast(msg, isErr){
+    const t = $('toast'); t.textContent = msg; t.className = 'toast show' + (isErr ? ' err' : '');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.className = 'toast'; }, isErr ? 7000 : 4000);
+  }
+
+  async function api(path, opts){
+    const headers = Object.assign({}, (opts && opts.headers) || {});
+    const p = lsGet(PASS_KEY); if(p) headers['x-passcode'] = p;
+    const res = await fetch(path, Object.assign({}, opts, { headers }));
+    let body = {}; try{ body = await res.json(); }catch{}
+    if(res.status === 401){
+      openSettings(true);
+      throw new Error('Enter the team passcode in Settings to use this page.');
+    }
+    if(!res.ok) throw new Error(body.error || `Request failed (${res.status}).`);
+    return body;
+  }
+  const post = (path, payload) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload || {}) });
+
+  // ---------- settings ----------
+  function openSettings(force){
+    const s = $('settings'); const open = force === true ? true : !s.classList.contains('open');
+    s.classList.toggle('open', open); $('gear').setAttribute('aria-expanded', String(open));
+  }
+  $('gear').addEventListener('click', () => openSettings());
+  $('passcode').value = lsGet(PASS_KEY);
+  $('passcode').addEventListener('change', () => { lsSet(PASS_KEY, $('passcode').value.trim()); load(); });
+
+  function renderUsage(){
+    const u = data.usage; if(!u){ $('usage').innerHTML = ''; return; }
+    const L = u.limits || {};
+    $('usage').innerHTML = `<h2>AI spending</h2>
+      <p>This month: <b>${money(u.spentUsd)}</b> of the ${money(L.monthlyBudgetUsd)} limit.<br>
+      Today: ${u.today.publicScans} of ${L.publicScansPerDay} web searches, ${u.today.discoveries || 0} of ${L.discoveriesPerDay} company-suggestion runs, ${u.today.lookups} of ${L.lookupsPerDay} company lookups.</p>
+      <p>These are estimates from Anthropic's published prices. The Claude Console shows the exact bill.</p>`;
+  }
+
+  // ---------- tabs ----------
+  function setTab(t){
+    tab = t; lsSet(TAB_KEY, t);
+    document.querySelectorAll('.segments button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t)));
+    ['government', 'public', 'private'].forEach(x => { $('tab-' + x).hidden = x !== t; });
+    renderSelbar();
+  }
+  document.querySelector('.segments').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-tab]'); if(b) setTab(b.dataset.tab);
+  });
+
+  // ---------- opportunity lists (government + public) ----------
+  const FILTERS = [['open', 'Open'], ['new', 'New'], ['interested', 'Interested'], ['applied', 'Applied'], ['dismissed', 'Dismissed'], ['all', 'All']];
+  const LISTS = {
+    government: {
+      prefix: 'gov',
+      org: i => i.agency,
+      kind: i => i.type,
+      haystack: i => `${i.title} ${i.agency} ${i.solicitationNumber} ${i.setAside} ${i.place}`,
+      facts: i => [
+        ['Posted', fmtDate(i.postedDate)],
+        ['Set-aside', i.setAside],
+        ['Place', i.place],
+        ['Solicitation', i.solicitationNumber ? `<span class="mono">${esc(i.solicitationNumber)}</span>` : '', true]
+      ],
+      linkLabel: 'Open on SAM.gov',
+      caveat: () => '',
+      csvHeader: ['ID', 'Found', 'Type', 'Title', 'Agency', 'Response due', 'Posted', 'Set-aside', 'Place', 'Solicitation #', 'NAICS', 'Status', 'Notes', 'Link'],
+      csvRow: r => [r.id, (r.foundAt || '').slice(0, 10), r.type, r.title, r.agency, String(r.responseDeadline || '').slice(0, 10), String(r.postedDate || '').slice(0, 10), r.setAside, r.place, r.solicitationNumber, r.naics, r.status, r.notes, r.link]
+    },
+    public: {
+      prefix: 'pub',
+      org: i => i.organization,
+      kind: i => orgTypeLabel(i.organizationType),
+      haystack: i => `${i.title} ${i.organization} ${i.location} ${i.solicitationNumber} ${i.summary}`,
+      facts: i => [
+        ['Posted', fmtDate(i.postedDate)],
+        ['Location', i.location],
+        ['Solicitation', i.solicitationNumber ? `<span class="mono">${esc(i.solicitationNumber)}</span>` : '', true]
+      ],
+      linkLabel: 'Open listing',
+      caveat: i => `Found by AI web search${i.foundAt ? ' on ' + fmtDate(i.foundAt.slice(0, 10)) : ''}. Confirm the deadline and requirements on the listing before bidding.${i.linkCheck === 'site' ? ' The link goes to the right website, but not necessarily the exact page.' : ''}`,
+      csvHeader: ['ID', 'Found', 'Title', 'Organization', 'Type', 'Location', 'Response due', 'Posted', 'Solicitation #', 'Summary', 'Status', 'Notes', 'Link'],
+      csvRow: r => [r.id, (r.foundAt || '').slice(0, 10), r.title, r.organization, r.organizationType, r.location, String(r.responseDeadline || '').slice(0, 10), String(r.postedDate || '').slice(0, 10), r.solicitationNumber, r.summary, r.status, r.notes, r.link]
+    }
+  };
+  function orgTypeLabel(t){
+    return ({ state: 'State', county: 'County', city: 'City', court: 'Court', school: 'School district', university: 'University', healthcare: 'Healthcare', transit: 'Transit', nonprofit: 'Nonprofit', private: 'Private company' })[t] || 'Other';
+  }
+
+  function visible(list){
+    const cfg = LISTS[list]; const f = filters[list];
+    const q = $(cfg.prefix + '-search').value.trim().toLowerCase();
+    return data[list].filter(i => {
+      if(f === 'open' && (i.status === 'dismissed' || i.status === 'applied')) return false;
+      if(f !== 'open' && f !== 'all' && i.status !== f) return false;
+      if(q && !cfg.haystack(i).toLowerCase().includes(q)) return false;
+      return true;
+    }).sort((a, b) => {
+      const key = (x) => { const n = daysUntil(x.responseDeadline); return n === null ? 1e6 : n < 0 ? 1e6 + 1 : n; };
+      return key(a) - key(b);
+    });
+  }
+
+  function stub(deadline){
+    const n = daysUntil(deadline);
+    if(n === null) return `<div class="stub none" aria-label="No deadline listed"><div class="m">Due</div><div class="d">—</div><div class="n">Not listed</div></div>`;
+    const d = parseDate(deadline);
+    const cls = n < 0 ? 'closed' : n <= 7 ? 'soon' : '';
+    const note = n < 0 ? 'Closed' : n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : `${n} days`;
+    return `<div class="stub ${cls}" aria-label="Due ${esc(fmtDate(deadline))}"><div class="m">${esc(d.toLocaleDateString('en-US', { month: 'short' }))}</div><div class="d">${d.getDate()}</div><div class="n">${note}</div></div>`;
+  }
+
+  function renderFilters(list){
+    const cfg = LISTS[list];
+    $(cfg.prefix + '-filters').innerHTML = FILTERS.map(([k, label]) =>
+      `<button class="chip" data-filter="${k}" aria-pressed="${filters[list] === k}">${label}</button>`).join('');
+  }
+
+  function renderList(list){
+    const cfg = LISTS[list];
+    const items = visible(list);
+    const el = $(cfg.prefix + '-list');
+    $(cfg.prefix + '-shown').textContent = `${items.length} shown`;
+    if(!items.length){
+      const none = !data[list].length;
+      el.innerHTML = `<div class="empty">${none
+        ? (list === 'government' ? 'No federal notices yet. The scan runs every 6 hours, or use Scan SAM.gov now.' : 'No public RFPs yet. The web search runs once a day, or use Search the web now.')
+        : 'Nothing matches these filters.'}</div>`;
+    } else {
+      el.innerHTML = items.map(i => {
+        const link = safeUrl(i.link);
+        const facts = cfg.facts(i).filter(f => f[1]).map(([k, v, raw]) => `<dt>${k}</dt><dd>${raw ? v : esc(v)}</dd>`).join('');
+        const st = i.status || 'new';
+        return `<article class="card ${st === 'dismissed' ? 'dismissed' : ''}">
+          <input type="checkbox" data-sel="${esc(i.id)}" ${selected[list].has(i.id) ? 'checked' : ''} aria-label="Select ${esc(i.title)}">
+          ${stub(i.responseDeadline)}
+          <div class="body">
+            <div class="tags"><span class="tag st-${esc(st)}">${esc(st[0].toUpperCase() + st.slice(1))}</span>${cfg.kind(i) ? `<span class="tag">${esc(cfg.kind(i))}</span>` : ''}</div>
+            <h3>${esc(i.title)}</h3>
+            <div class="org">${esc(cfg.org(i))}</div>
+            ${i.summary ? `<p class="summary">${esc(i.summary)}</p>` : ''}
+            ${facts ? `<dl class="facts">${facts}</dl>` : ''}
+            ${cfg.caveat(i) ? `<p class="caveat">${esc(cfg.caveat(i))}</p>` : ''}
+            <div class="actions">
+              ${link ? `<a class="btn sm" href="${esc(link)}" target="_blank" rel="noopener noreferrer">${cfg.linkLabel}</a>` : ''}
+              ${st !== 'interested' ? `<button class="btn sm" data-act="interested" data-id="${esc(i.id)}">Mark interested</button>` : ''}
+              ${st !== 'applied' ? `<button class="btn sm" data-act="applied" data-id="${esc(i.id)}">Mark applied</button>` : ''}
+              ${st !== 'dismissed' ? `<button class="btn sm" data-act="dismissed" data-id="${esc(i.id)}">Dismiss</button>` : `<button class="btn sm" data-act="new" data-id="${esc(i.id)}">Restore</button>`}
+            </div>
+            <textarea class="notes" data-notes="${esc(i.id)}" placeholder="Notes for the team" aria-label="Notes">${esc(i.notes)}</textarea>
+          </div>
+        </article>`;
+      }).join('');
+    }
+    $(cfg.prefix + '-selectall').checked = items.length > 0 && items.every(i => selected[list].has(i.id));
+  }
+
+  function wireList(list){
+    const cfg = LISTS[list];
+    $(cfg.prefix + '-search').addEventListener('input', () => renderList(list));
+    $(cfg.prefix + '-filters').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-filter]'); if(!b) return;
+      filters[list] = b.dataset.filter; renderFilters(list); renderList(list);
+    });
+    $(cfg.prefix + '-selectall').addEventListener('change', (e) => {
+      visible(list).forEach(i => e.target.checked ? selected[list].add(i.id) : selected[list].delete(i.id));
+      renderList(list); renderSelbar();
+    });
+    const el = $(cfg.prefix + '-list');
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-act]'); if(b) updateOpportunity(list, b.dataset.id, { status: b.dataset.act });
+    });
+    el.addEventListener('change', (e) => {
+      if(e.target.matches('[data-sel]')){
+        e.target.checked ? selected[list].add(e.target.dataset.sel) : selected[list].delete(e.target.dataset.sel);
+        renderSelbar();
+      } else if(e.target.matches('[data-notes]')){
+        updateOpportunity(list, e.target.dataset.notes, { notes: e.target.value });
+      }
+    });
+  }
+
+  async function updateOpportunity(list, id, patch){
+    const item = data[list].find(i => i.id === id); if(!item) return;
+    const prev = { status: item.status, notes: item.notes };
+    Object.assign(item, patch);
+    if(patch.status) renderAll();
+    try{
+      await post('/.netlify/functions/contracts-update', Object.assign({ list, id }, patch));
+      if(patch.notes !== undefined) toast('Notes saved.');
+    }catch(err){
+      Object.assign(item, prev); renderAll(); toast(err.message, true);
+    }
+  }
+
+  // ---------- status lines ----------
+  function renderGovStatus(){
+    const m = data.governmentMeta || {};
+    $('gov-setup').hidden = !!data.setup.samKey;
+    $('gov-scan').disabled = !data.setup.samKey;
+    $('gov-status').textContent = m.lastScanAt ? `Last scan ${fmtTime(m.lastScanAt)}: ${m.lastNew || 0} new.` : 'No scans yet.';
+  }
+
+  function publicBusy(){ const s = data.publicStatus || {}; return s.state === 'queued' || s.state === 'running'; }
+
+  function renderPubStatus(){
+    const s = data.publicStatus || {}; const el = $('pub-status');
+    $('pub-setup').hidden = !!data.setup.aiKey;
+    $('pub-scan').disabled = !data.setup.aiKey || publicBusy();
+    el.className = 'status';
+    if(s.state === 'queued'){ el.classList.add('busy'); el.textContent = 'Starting the web search…'; }
+    else if(s.state === 'running'){ el.classList.add('busy'); el.textContent = 'Searching the web. This usually takes a few minutes; results appear here when it finishes.'; }
+    else if(s.state === 'error'){ el.classList.add('err'); el.textContent = `The last web search didn't finish: ${s.error || 'unknown error'}`; }
+    else if(s.state === 'done'){
+      let t = `Last search ${fmtTime(s.finishedAt)}: ${s.added || 0} new of ${s.found || 0} found. Cost about ${money(s.costUsd)}.`;
+      if(s.dropped) t += ` ${s.dropped} left out because their links couldn't be confirmed.`;
+      if(s.expired) t += ` ${s.expired} already closed.`;
+      el.textContent = t;
+    } else el.textContent = 'No web searches yet.';
+  }
+
+  $('gov-scan').addEventListener('click', async () => {
+    if(!confirm('Scan SAM.gov now? This uses 1 of about 10 daily SAM.gov requests. The automatic scan already runs every 6 hours.')) return;
+    const b = $('gov-scan'); b.disabled = true; b.textContent = 'Scanning…';
+    try{
+      const r = await api('/.netlify/functions/contract-scanner-test');
+      toast(`SAM.gov scan done: ${(r.added || []).length} new.`);
+      await load();
+    }catch(err){ toast(err.message, true); }
+    finally{ b.textContent = 'Scan SAM.gov now'; b.disabled = !data.setup.samKey; }
+  });
+
+  $('pub-scan').addEventListener('click', async () => {
+    const last = data.usage && data.usage.lastCosts && data.usage.lastCosts.publicScans;
+    const cost = last ? `The last search cost about ${money(last.usd)}.` : 'Estimated cost: about $0.30 to $0.60.';
+    if(!confirm(`Search the web for open RFPs now? This runs up to 8 web searches. ${cost}`)) return;
+    try{
+      await post('/.netlify/functions/public-scan-start');
+      data.publicStatus = { state: 'queued', startedAt: new Date().toISOString() };
+      renderPubStatus(); schedulePoll();
+    }catch(err){ toast(err.message, true); }
+  });
+
+  // ---------- private companies ----------
+  const CO_STATUS = [['not_started', 'Not started'], ['researching', 'Researching'], ['registered', 'Registered'], ['in_contact', 'In contact'], ['not_a_fit', 'Not a fit']];
+  const REG_LABEL = { open: 'Open registration', invitation_only: 'Invitation only: needs a sponsoring buyer', unclear: 'Registration type unclear' };
+
+  // ---------- AI company suggestions ----------
+  function discoverBusy(){ const s = data.discoverStatus || {}; return s.state === 'queued' || s.state === 'running'; }
+
+  function renderDiscoverStatus(){
+    const s = data.discoverStatus || {}; const el = $('pr-status');
+    $('pr-find').disabled = !data.setup.aiKey || discoverBusy();
+    el.className = 'status';
+    if(s.state === 'queued'){ el.classList.add('busy'); el.textContent = 'Starting the company search…'; }
+    else if(s.state === 'running'){ el.classList.add('busy'); el.textContent = 'Looking for companies. This usually takes a few minutes; new ones appear here when it finishes.'; }
+    else if(s.state === 'error'){ el.classList.add('err'); el.textContent = `The last company search didn't finish: ${s.error || 'unknown error'}`; }
+    else if(s.state === 'done'){
+      let t = `Updated ${fmtTime(s.finishedAt)}: ${s.addedPriorities || 0} new priorities, ${s.addedSuggestions || 0} new suggestions`;
+      if(s.upgraded) t += `, ${s.upgraded} moved up to priority`;
+      t += `. Cost about ${money(s.costUsd)}.`;
+      if(s.demoted) t += ` ${s.demoted} listed as suggestions because their signal links couldn't be confirmed.`;
+      el.textContent = t;
+    } else el.textContent = data.setup.aiKey ? 'The first company search runs within a day, or start it now.' : '';
+  }
+
+  function prospectMatches(p, q){ return !q || `${p.name} ${p.industry} ${p.location} ${p.why}`.toLowerCase().includes(q); }
+  function prospectButtons(p){
+    return `${data.setup.aiKey ? `<button class="btn sm ${p.tier === 'priority' ? 'primary' : ''}" data-pr-research="${esc(p.id)}">Research how to register</button>` : ''}
+      <button class="btn sm" data-pr-track="${esc(p.id)}">Track</button>
+      <button class="btn sm" data-pr-dismiss="${esc(p.id)}">Not a fit</button>`;
+  }
+
+  function renderProspects(){
+    const open = data.prospects.filter(p => p.state === 'open');
+    const priorities = open.filter(p => p.tier === 'priority')
+      .sort((a, b) => String(b.signalDate || b.foundAt).localeCompare(String(a.signalDate || a.foundAt)));
+    const q = $('pr-search').value.trim().toLowerCase();
+    const allSugg = open.filter(p => p.tier === 'suggestion').sort((a, b) => String(b.foundAt).localeCompare(String(a.foundAt)));
+    const sugg = allSugg.filter(p => prospectMatches(p, q));
+    const ran = !!(data.discoverStatus && data.discoverStatus.lastSuccessAt);
+
+    $('pr-priority-count').textContent = priorities.length ? `${priorities.length}` : '';
+    $('pr-sugg-count').textContent = allSugg.length ? `${allSugg.length}` : '';
+
+    $('pr-priority').innerHTML = priorities.length ? priorities.map(p => {
+      const src = safeUrl(p.signalUrl);
+      return `<article class="prospect">
+        <div class="prospect-head"><h3>${esc(p.name)}</h3>${p.industry ? `<span class="tag">${esc(p.industry)}</span>` : ''}</div>
+        ${p.location ? `<div class="org">${esc(p.location)}</div>` : ''}
+        <p class="signal"><b>Signal:</b> ${esc(p.signal)} ${src ? `<a href="${esc(src)}" target="_blank" rel="noopener noreferrer">Source</a>` : ''}${p.signalDate ? `, ${esc(fmtDate(p.signalDate))}` : ''}</p>
+        ${p.why ? `<p class="why">${esc(p.why)}</p>` : ''}
+        <p class="caveat">Found ${esc(fmtDate((p.foundAt || '').slice(0, 10)))} by AI web search. Check the source before reaching out.${p.linkCheck === 'site' ? ' The link goes to the right website, but not necessarily the exact page.' : ''}</p>
+        <div class="actions">${prospectButtons(p)}</div>
+      </article>`;
+    }).join('') : `<div class="empty">${ran
+      ? 'No companies with a current buying signal right now. The suggestions below are still good fits.'
+      : (data.setup.aiKey ? 'No priorities yet. Use Find more companies to start, or wait for the automatic search.' : 'Turn on company suggestions by adding ANTHROPIC_API_KEY in Netlify.')}</div>`;
+
+    const shown = sugg.slice(0, suggShown);
+    $('pr-sugg').innerHTML = shown.length ? `<ul class="sugg">${shown.map(p => `
+      <li>
+        <span class="name">${esc(p.name)}</span>${p.industry ? ` <span class="tag">${esc(p.industry)}</span>` : ''}${p.location ? ` <span class="loc">${esc(p.location)}</span>` : ''}
+        ${p.why ? `<p>${esc(p.why)}</p>` : ''}
+        <div class="actions">${prospectButtons(p)}</div>
+      </li>`).join('')}</ul>`
+      : `<div class="empty">${allSugg.length ? 'No suggestions match that filter.' : (ran ? 'No more suggestions right now. Use Find more companies for a new batch.' : 'Suggestions appear after the first company search.')}</div>`;
+    $('pr-sugg-actions').hidden = !allSugg.length;
+    $('pr-more').hidden = sugg.length <= suggShown;
+
+    const dismissed = data.prospects.filter(p => p.state === 'dismissed');
+    $('pr-dismissed-box').hidden = !dismissed.length;
+    $('pr-dismissed-count').textContent = dismissed.length;
+    $('pr-dismissed').innerHTML = dismissed.map(p => `<li><span>${esc(p.name)}</span><button class="btn sm" data-pr-restore="${esc(p.id)}">Restore</button></li>`).join('');
+  }
+
+  function prospectById(id){ return data.prospects.find(p => p.id === id); }
+
+  async function trackProspect(id){
+    try{
+      const r = await post('/.netlify/functions/prospects-update', { action: 'track', id });
+      data.prospects = data.prospects.filter(p => p.id !== id);
+      if(!data.companies.some(c => c.id === r.company.id)) data.companies.unshift(r.company);
+      renderAll(); toast(`${r.company.name} added to Tracking.`);
+    }catch(err){ toast(err.message, true); }
+  }
+  async function setProspectState(id, action){
+    const p = prospectById(id); if(!p) return;
+    const prev = p.state; p.state = action === 'dismiss' ? 'dismissed' : 'open'; renderProspects(); renderCounts();
+    try{ await post('/.netlify/functions/prospects-update', { action, id }); }
+    catch(err){ p.state = prev; renderProspects(); renderCounts(); toast(err.message, true); }
+  }
+
+  ['pr-priority', 'pr-sugg', 'pr-dismissed'].forEach(boxId => $(boxId).addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if(!b) return;
+    if(b.dataset.prResearch){ const p = prospectById(b.dataset.prResearch); if(p) research({ prospectId: p.id }, p.name); }
+    else if(b.dataset.prTrack) trackProspect(b.dataset.prTrack);
+    else if(b.dataset.prDismiss) setProspectState(b.dataset.prDismiss, 'dismiss');
+    else if(b.dataset.prRestore) setProspectState(b.dataset.prRestore, 'restore');
+  }));
+  $('pr-search').addEventListener('input', () => { suggShown = 12; renderProspects(); });
+  $('pr-more').addEventListener('click', () => { suggShown += 12; renderProspects(); });
+  $('pr-find').addEventListener('click', async () => {
+    const last = data.usage && data.usage.lastCosts && data.usage.lastCosts.discoveries;
+    const cost = last ? `The last one cost about ${money(last.usd)}.` : 'Estimated cost: about $0.40 to $0.80.';
+    if(!confirm(`Search for more companies now? This runs up to 10 web searches. ${cost} It also refreshes automatically every week.`)) return;
+    try{
+      await post('/.netlify/functions/private-discover-start');
+      data.discoverStatus = Object.assign({}, data.discoverStatus, { state: 'queued', startedAt: new Date().toISOString() });
+      renderDiscoverStatus(); schedulePoll();
+    }catch(err){ toast(err.message, true); }
+  });
+
+  function companyBusy(c){ return c.lookupStatus === 'queued' || c.lookupStatus === 'running'; }
+
+  function renderFindings(c){
+    if(companyBusy(c)) return `<p class="busy-line">Researching ${esc(c.name)}. This usually takes a minute or two.</p>`;
+    let html = '';
+    if(c.lookupStatus === 'error') html += `<p class="err-line">Research didn't finish: ${esc(c.lookupError || 'unknown error')}</p>`;
+    const l = c.lookup;
+    if(!l) return html;
+    const portal = safeUrl(l.portalUrl);
+    const dp = l.diversityProgram || {};
+    const dpUrl = safeUrl(dp.url);
+    html += `<div class="findings">
+      <p><span class="reg ${esc(l.registration)}">${esc(REG_LABEL[l.registration] || REG_LABEL.unclear)}</span>${l.platform ? `Uses ${esc(l.platform)}` : ''}</p>
+      ${portal ? `<p><a class="btn sm primary" href="${esc(portal)}" target="_blank" rel="noopener noreferrer">Open supplier portal</a> ${l.portalName ? esc(l.portalName) : ''}</p>` : '<p>No supplier portal link was found.</p>'}
+      ${l.steps && l.steps.length ? `<h4>How to register</h4><ol>${l.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>` : ''}
+      ${l.requirements && l.requirements.length ? `<h4>What they ask for</h4><ul>${l.requirements.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
+      ${dp.name || dpUrl ? `<h4>Supplier diversity program</h4><p>${dpUrl ? `<a href="${esc(dpUrl)}" target="_blank" rel="noopener noreferrer">${esc(dp.name || 'Program page')}</a>` : esc(dp.name)}${dp.certifications && dp.certifications.length ? `. Recognizes: ${esc(dp.certifications.join(', '))}.` : ''}</p>` : ''}
+      ${l.languageServicesBuyers ? `<h4>Who buys language services</h4><p>${esc(l.languageServicesBuyers)}</p>` : ''}
+      ${l.tips && l.tips.length ? `<h4>Tips</h4><ul>${l.tips.map(s => `<li>${esc(s)}</li>`).join('')}</ul>` : ''}
+      ${l.sources && l.sources.length ? `<h4>Sources</h4><ul>${l.sources.map(s => safeUrl(s.url) ? `<li><a href="${esc(s.url)}" target="_blank" rel="noopener noreferrer">${esc(s.title || s.url)}</a></li>` : '').join('')}</ul>` : ''}
+      <p class="caveat">Researched ${esc(fmtDate((c.lookupAt || '').slice(0, 10)))} by AI web search${c.lookupCostUsd ? ` (about ${money(c.lookupCostUsd)})` : ''}. Confirm details on the company's site before relying on them.</p>
+    </div>`;
+    return html;
+  }
+
+  function renderCompanies(){
+    $('co-setup').hidden = !!data.setup.aiKey;
+    $('co-count').textContent = data.companies.length ? `${data.companies.length}` : '';
+    $('co-research').disabled = !data.setup.aiKey;
+    const list = data.companies;
+    $('co-footer').hidden = !list.length;
+    if(!list.length){
+      $('co-list').innerHTML = '<div class="empty">Nothing tracked yet. Choose Track or Research on a company above.</div>';
+      return;
+    }
+    $('co-list').innerHTML = list.map(c => `
+      <article class="company">
+        <div class="company-head">
+          <h3>${esc(c.name)}</h3>
+          <span>
+            ${data.setup.aiKey && !companyBusy(c) ? `<button class="btn sm" data-research="${esc(c.id)}">${c.lookup ? 'Research again' : 'Research'}</button>` : ''}
+            <button class="btn sm" data-delete="${esc(c.id)}">Remove</button>
+          </span>
+        </div>
+        <div class="company-controls">
+          <label>Status
+            <select data-co-status="${esc(c.id)}">${CO_STATUS.map(([k, v]) => `<option value="${k}" ${c.status === k ? 'selected' : ''}>${v}</option>`).join('')}</select>
+          </label>
+          <label>Follow up on
+            <input type="date" data-co-follow="${esc(c.id)}" value="${esc(c.followUp || '')}">
+          </label>
+        </div>
+        ${c.origin && (c.origin.why || c.origin.signal) ? `<p class="origin">${c.origin.tier === 'priority' ? 'Priority' : 'Suggested'}: ${esc([c.origin.signal, c.origin.why].filter(Boolean).join(' '))}${safeUrl(c.origin.signalUrl) ? ` <a href="${esc(c.origin.signalUrl)}" target="_blank" rel="noopener noreferrer">Source</a>` : ''}</p>` : ''}
+        ${renderFindings(c)}
+        <textarea class="notes" data-co-notes="${esc(c.id)}" placeholder="Notes: contacts, next steps, what you sent" aria-label="Notes for ${esc(c.name)}">${esc(c.notes)}</textarea>
+      </article>`).join('');
+  }
+
+  // payload: { name } | { id } | { prospectId }
+  async function research(payload, label){
+    const last = data.usage && data.usage.lastCosts && data.usage.lastCosts.lookups;
+    const cost = last ? `The last lookup cost about ${money(last.usd)}.` : 'Estimated cost: about $0.15 to $0.35.';
+    if(!confirm(`Research how to become a supplier to ${label}? This runs up to 5 web searches. ${cost}`)) return;
+    try{
+      const r = await post('/.netlify/functions/private-lookup-start', payload);
+      if(payload.prospectId) data.prospects = data.prospects.filter(p => p.id !== payload.prospectId);
+      else data.prospects = data.prospects.filter(p => !(p.state === 'open' && p.name.toLowerCase() === r.company.name.toLowerCase()));
+      const idx = data.companies.findIndex(c => c.id === r.company.id);
+      if(idx === -1) data.companies.unshift(r.company); else data.companies[idx] = r.company;
+      renderAll(); schedulePoll();
+    }catch(err){ toast(err.message, true); }
+  }
+
+  $('co-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('co-name').value.trim(); if(!name) return;
+    $('co-name').value = '';
+    research({ name }, name);
+  });
+  $('co-add').addEventListener('click', async () => {
+    const name = $('co-name').value.trim(); if(!name){ $('co-name').focus(); return; }
+    try{
+      const r = await post('/.netlify/functions/companies-update', { action: 'add', name });
+      if(!data.companies.some(c => c.id === r.company.id)) data.companies.unshift(r.company);
+      data.prospects = data.prospects.filter(p => !(p.state === 'open' && p.name.toLowerCase() === r.company.name.toLowerCase()));
+      $('co-name').value = ''; renderAll();
+    }catch(err){ toast(err.message, true); }
+  });
+
+  $('co-list').addEventListener('click', async (e) => {
+    const r = e.target.closest('[data-research]');
+    if(r){ const c = data.companies.find(x => x.id === r.dataset.research); return research({ id: r.dataset.research }, c ? c.name : 'this company'); }
+    const d = e.target.closest('[data-delete]');
+    if(d){
+      const c = data.companies.find(x => x.id === d.dataset.delete);
+      if(!c || !confirm(`Remove ${c.name} from the tracker? Its research and notes will be deleted.`)) return;
+      try{
+        await post('/.netlify/functions/companies-update', { action: 'delete', id: c.id });
+        data.companies = data.companies.filter(x => x.id !== c.id); renderCompanies(); renderCounts();
+      }catch(err){ toast(err.message, true); }
+    }
+  });
+  $('co-list').addEventListener('change', async (e) => {
+    const t = e.target; let id, patch;
+    if(t.matches('[data-co-status]')){ id = t.dataset.coStatus; patch = { status: t.value }; }
+    else if(t.matches('[data-co-follow]')){ id = t.dataset.coFollow; patch = { followUp: t.value }; }
+    else if(t.matches('[data-co-notes]')){ id = t.dataset.coNotes; patch = { notes: t.value }; }
+    else return;
+    const c = data.companies.find(x => x.id === id); if(!c) return;
+    const prev = { status: c.status, followUp: c.followUp, notes: c.notes };
+    Object.assign(c, patch);
+    try{
+      await post('/.netlify/functions/companies-update', Object.assign({ action: 'update', id }, patch));
+      toast('Saved.');
+    }catch(err){ Object.assign(c, prev); renderCompanies(); toast(err.message, true); }
+  });
+
+  // ---------- export ----------
+  const CO_HEADER = ['Company', 'Status', 'Follow-up', 'Supplier portal', 'Registration', 'Platform', 'Diversity program', 'Notes', 'Last researched'];
+  const coRow = c => { const l = c.lookup || {}; const dp = l.diversityProgram || {}; return [c.name, c.status, c.followUp || '', l.portalUrl || '', l.registration || '', l.platform || '', [dp.name, dp.url].filter(Boolean).join(' '), c.notes || '', (c.lookupAt || '').slice(0, 10)]; };
+
+  function downloadCsv(name, header, rows){
+    const csv = [header, ...rows].map(r => r.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `${name}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  async function sendToSheet(list, ids, btn){
+    const label = btn.textContent; btn.disabled = true; btn.textContent = 'Sending…';
+    try{
+      const r = await post('/.netlify/functions/sheets-push', ids ? { list, ids } : { list });
+      toast(`Sent to the "${r.sheet}" tab: ${r.added} added, ${r.updated} updated.`);
+    }catch(err){ toast(err.message, true); }
+    finally{ btn.disabled = false; btn.textContent = label; }
+  }
+
+  function renderSelbar(){
+    const list = tab === 'government' || tab === 'public' ? tab : null;
+    const n = list ? selected[list].size : 0;
+    $('selbar').classList.toggle('show', n > 0);
+    $('sel-count').textContent = `${n} selected`;
+  }
+  $('sel-csv').addEventListener('click', () => {
+    const cfg = LISTS[tab]; if(!cfg) return;
+    const rows = data[tab].filter(i => selected[tab].has(i.id)).map(cfg.csvRow);
+    downloadCsv(`${tab}-contracts`, cfg.csvHeader, rows);
+    toast(`Exported ${rows.length}. To open in Google Sheets: File → Import → Upload.`);
+  });
+  $('sel-sheet').addEventListener('click', (e) => { if(LISTS[tab]) sendToSheet(tab, [...selected[tab]], e.currentTarget); });
+  $('co-csv').addEventListener('click', () => { downloadCsv('private-companies', CO_HEADER, data.companies.map(coRow)); toast(`Exported ${data.companies.length} companies.`); });
+  $('co-sheet').addEventListener('click', (e) => sendToSheet('companies', null, e.currentTarget));
+  const PR_HEADER = ['Company', 'Tier', 'Industry', 'Location', 'Why', 'Signal', 'Signal source', 'Found'];
+  $('pr-csv').addEventListener('click', () => {
+    const rows = data.prospects.filter(p => p.state === 'open').map(p => [p.name, p.tier, p.industry, p.location, p.why, p.signal || '', p.signalUrl || '', (p.foundAt || '').slice(0, 10)]);
+    downloadCsv('company-suggestions', PR_HEADER, rows); toast(`Exported ${rows.length} companies.`);
+  });
+  $('pr-sheet').addEventListener('click', (e) => sendToSheet('prospects', null, e.currentTarget));
+
+  // ---------- counts / render / load ----------
+  function renderCounts(){
+    const newCount = (l) => data[l].filter(i => (i.status || 'new') === 'new').length;
+    $('count-government').textContent = `${newCount('government')} new`;
+    $('count-public').textContent = `${newCount('public')} new`;
+    const pri = data.prospects.filter(p => p.state === 'open' && p.tier === 'priority').length;
+    $('count-private').textContent = pri ? `${pri} ${pri === 1 ? 'priority' : 'priorities'}` : `${data.companies.length} tracked`;
+  }
+
+  function renderAll(){
+    ['government', 'public'].forEach(l => {
+      selected[l] = new Set([...selected[l]].filter(id => data[l].some(i => i.id === id)));
+      renderList(l);
+    });
+    renderGovStatus(); renderPubStatus(); renderDiscoverStatus(); renderProspects(); renderCompanies(); renderCounts(); renderUsage(); renderSelbar();
+  }
+
+  // Don't re-render (and wipe what someone is typing) during a background refresh.
+  function editing(){
+    const a = document.activeElement;
+    return a && a.closest && a.closest('#gov-list, #pub-list, #co-list') && a.matches('textarea, input, select');
+  }
+  document.addEventListener('focusout', () => {
+    if(renderDeferred) setTimeout(() => { if(!editing()){ renderDeferred = false; renderAll(); } }, 0);
+  });
+
+  async function load(fromPoll){
+    try{
+      const r = await api('/.netlify/functions/contracts-list');
+      data = Object.assign(data, r);
+      if(fromPoll && editing()) renderDeferred = true; else renderAll();
+    }catch(err){
+      ['gov-list', 'pub-list', 'co-list'].forEach(id => { $(id).innerHTML = `<div class="empty">${esc(err.message)}</div>`; });
+    }
+    schedulePoll();
+  }
+
+  function schedulePoll(){
+    clearTimeout(pollTimer);
+    const busy = publicBusy() || discoverBusy() || data.companies.some(companyBusy);
+    if(busy) pollTimer = setTimeout(() => load(true), 6000);
+  }
+
+  // ---------- init ----------
+  ['government', 'public'].forEach(l => { renderFilters(l); wireList(l); });
+  const saved = lsGet(TAB_KEY);
+  setTab(['government', 'public', 'private'].includes(saved) ? saved : 'government');
+  load();
+})();
+</script>
+</body>
+</html>

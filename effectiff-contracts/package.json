@@ -1,0 +1,10 @@
+{
+  "name": "effectiff-contracts",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Effectiff contracts finder: SAM.gov federal notices, public RFP web search, and private-company supplier suggestions and research.",
+  "dependencies": {
+    "@netlify/blobs": "^8.1.0",
+    "@netlify/functions": "^2.8.0"
+  }
+}

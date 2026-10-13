@@ -39,7 +39,11 @@ const SKIP_TYPES = ['award', 'justification', 'surplus', 'intent to bundle'];
 
 const MAX_STORED = 1000;        // keep the list from growing forever
 const MAX_RC_POSTS_PER_RUN = 15; // only matters if Rocket.Chat posting is on
-const LOOKBACK_DAYS = 4;         // overlap window across runs; dedupe handles repeats
+const LOOKBACK_DAYS = 4;         // normal window: overlaps across runs; dedupe handles repeats
+// The first scan on a site looks back further, so notices posted weeks ago but
+// still open for bids show up right away. Closed notices are dropped.
+const BACKFILL_DAYS = Number(process.env.SAM_BACKFILL_DAYS || 60);
+const SAM_LIMIT = 1000;          // SAM.gov's maximum page size; one request either way
 
 const LIST_KEY = KEYS.government;
 const SEEN_KEY = KEYS.governmentSeen;
@@ -49,7 +53,7 @@ function fmtQueryDate(d){
   return `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
 }
 
-async function fetchOpportunities(){
+async function fetchOpportunities(lookbackDays){
   const apiKey = process.env.SAM_API_KEY;
   if(!apiKey){
     throw new Error('SAM_API_KEY is not set in Netlify environment variables.');
@@ -57,16 +61,17 @@ async function fetchOpportunities(){
 
   const today = new Date();
   const from = new Date(today);
-  from.setDate(from.getDate() - LOOKBACK_DAYS);
+  from.setDate(from.getDate() - lookbackDays);
 
   const all = [];
+  let totalRecords = 0;
   for(const naics of NAICS_CODES){
     const params = new URLSearchParams({
       api_key: apiKey,
       postedFrom: fmtQueryDate(from),
       postedTo: fmtQueryDate(today),
       ncode: naics,
-      limit: '500'
+      limit: String(SAM_LIMIT)
     });
     const res = await fetch(`https://api.sam.gov/opportunities/v2/search?${params}`);
 
@@ -83,9 +88,18 @@ async function fetchOpportunities(){
 
     const data = await res.json();
     const list = data.opportunitiesData || data.data || [];
+    totalRecords += Number(data.totalRecords) || list.length;
     all.push(...list);
   }
-  return all;
+  return { list: all, totalRecords };
+}
+
+// True when the notice's response deadline has already passed.
+function isClosed(opp){
+  const v = opp.responseDeadLine || opp.responseDate;
+  if(!v) return false;
+  const d = new Date(v);
+  return !isNaN(d) && d.getTime() < Date.now();
 }
 
 function isBiddable(opp){
@@ -172,17 +186,25 @@ async function runScan({ dryRun = false, event } = {}){
   const existing = await readStoreJson(store, LIST_KEY, []);
   const seen = new Set(await readStoreJson(store, SEEN_KEY, []));
   existing.forEach(r => seen.add(r.id));
+  const meta = await readStoreJson(store, META_KEY, {});
+  const firstScan = !meta.backfilledAt;
+  const lookbackDays = firstScan ? BACKFILL_DAYS : LOOKBACK_DAYS;
 
-  const opportunities = await fetchOpportunities();
+  const { list: opportunities, totalRecords } = await fetchOpportunities(lookbackDays);
 
   const fresh = [];
-  const skipped = { alreadySeen: 0, notBiddable: [], noKeywordMatch: [] };
+  const skipped = { alreadySeen: 0, closed: [], notBiddable: [], noKeywordMatch: [] };
 
   for(const opp of opportunities){
     const id = opp.noticeId || opp.solicitationNumber;
     if(!id) continue;
     if(seen.has(id)){ skipped.alreadySeen++; continue; }
 
+    if(isClosed(opp)){
+      skipped.closed.push(opp.title || id);
+      if(!dryRun) seen.add(id);
+      continue;
+    }
     if(!isBiddable(opp)){
       skipped.notBiddable.push(opp.title || id);
       if(!dryRun) seen.add(id);
@@ -210,7 +232,15 @@ async function runScan({ dryRun = false, event } = {}){
     // Track filtered-out ids separately so they aren't re-evaluated each run.
     const listIds = new Set(updated.map(r => r.id));
     await writeJson(store, SEEN_KEY, Array.from(seen).filter(id => !listIds.has(id)).slice(-2000));
-    await writeJson(store, META_KEY, { lastScanAt: new Date().toISOString(), lastFetched: opportunities.length, lastNew: fresh.length });
+    const now = new Date().toISOString();
+    await writeJson(store, META_KEY, {
+      ...meta,
+      lastScanAt: now,
+      lastFetched: opportunities.length,
+      lastNew: fresh.length,
+      lastLookbackDays: lookbackDays,
+      backfilledAt: meta.backfilledAt || now
+    });
 
     // Optional Rocket.Chat notifications.
     if(process.env.RC_CONTRACTS_ROOM_ID){
@@ -225,7 +255,11 @@ async function runScan({ dryRun = false, event } = {}){
 
   return {
     dryRun,
+    firstScan,
+    lookbackDays,
     totalFetched: opportunities.length,
+    // More notices matched than one request returns (very unlikely for this category).
+    truncated: totalRecords > opportunities.length ? `SAM.gov reported ${totalRecords} notices; ${opportunities.length} were fetched.` : undefined,
     [dryRun ? 'wouldAdd' : 'added']: fresh.map(r => r.title),
     rocketChat: process.env.RC_CONTRACTS_ROOM_ID ? { posted: rcPosted, failed: rcFailed.length ? rcFailed : undefined } : 'off',
     skipped,

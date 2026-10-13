@@ -73,8 +73,8 @@ async function fetchOpportunities(){
     if(res.status === 429){
       throw new Error('SAM.gov rate limit reached for today (personal keys allow ~10 requests/day). The scan will resume automatically tomorrow; avoid extra manual test runs.');
     }
-    if(res.status === 403 || res.status === 401){
-      throw new Error(`SAM.gov rejected the API key (${res.status}). Check SAM_API_KEY in Netlify — and note new keys can take a few minutes to activate.`);
+    if(res.status === 401 || res.status === 403 || res.status === 404){
+      throw new Error(`SAM.gov didn't accept the API key (${res.status}). SAM_API_KEY must be the Public API Key from your SAM.gov account (sam.gov → Account Details → Public API Key). Keys from api.data.gov signup don't work here.`);
     }
     if(!res.ok){
       const body = await res.text().catch(() => '');
